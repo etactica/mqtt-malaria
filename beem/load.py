@@ -61,8 +61,14 @@ class MsgStatus():
 
 class TrackingSender():
     """
-    Creates a mqtt client and, on demand, publishes messages
+    An MQTT message publisher that tracks time to ack publishes
+
+    functions make_topic(sequence_num) and make_payload(sequence_num, size)
+    can be provided to help steer message generation
+
     The timing of the publish calls are tracked for analysis
+
+    This is a _single_ producer, it's not a huge load testing thing by itself
     """
     msg_statuses = {}
     def __init__(self, host, port, cid):
@@ -110,15 +116,15 @@ class TrackingSender():
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
             self.msg_statuses[mid] = MsgStatus(mid, len(payload))
-        logging.debug("Published %d msgs of (gaussian) %d bytes", msg_count, msg_size)
+        logging.info("Finished publish %d msgs of %d bytes at qos %d", msg_count, msg_size, qos)
 
         finished = False
         while not finished:
             missing = [x for x in self.msg_statuses.values() if not x.received]
             finished = len(missing) == 0
-            logging.info("Waiting for %d messages to be confirmed still...", len(missing))
             if finished:
                 break
+            logging.info("Waiting for %d messages to be confirmed still...", len(missing))
             time.sleep(2)
             for x in missing:
                 logging.debug(x)
@@ -126,13 +132,20 @@ class TrackingSender():
 
     def stats(self):
         successful = [x for x in self.msg_statuses.values() if x.received]
-        logging.info("Success rate = %f%%", 100 * (len(successful) / len(self.msg_statuses)))
+        rate = len(successful) / len(self.msg_statuses)
         # Let's work in milliseconds now
         times = [x.time_flight() * 1000 for x in successful]
         mean = sum(times) / len(times)
-        logging.info("Average flight time of successful messages = %f milliseconds", mean)
         squares = [x * x for x in [q - mean for q in times]]
         stddev = math.sqrt(sum(squares) / len(times))
-        logging.info("Min / Max / StdDev flight times= %f / %f / %f milliseconds", min(times), max(times), stddev)
+        return {
+            "count_ok": len(successful),
+            "count_total": len(self.msg_statuses),
+            "rate_ok" : rate,
+            "time_mean" : mean,
+            "time_min" : min(times),
+            "time_max" : max(times),
+            "time_stddev" : stddev
+        }
         
 
