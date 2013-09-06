@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
+import logging
 import beem.load
+
+logging.basicConfig(level=logging.DEBUG)
 
 def custom_make_topic(seq):
     return "karlosssssss_%d" % seq

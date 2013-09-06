@@ -34,8 +34,6 @@ import time
 
 import mosquitto
 
-logging.basicConfig(level=logging.DEBUG)
-
 class MsgStatus():
     """
     Allows recording statistics of a published message.
