@@ -71,6 +71,7 @@ class TrackingSender():
     This is a _single_ producer, it's not a huge load testing thing by itself
     """
     msg_statuses = {}
+    log = logging.getLogger(__name__)
     def __init__(self, host, port, cid):
         self.cid = cid
         self.mqttc = mosquitto.Mosquitto(cid)
@@ -106,7 +107,7 @@ class TrackingSender():
         return "test/%s/data/%d" % (self.cid, message_seq)
 
     def publish_handler(self, mosq, userdata, mid):
-        logging.debug("Received confirmation of mid %d", mid)
+        self.log.debug("Received confirmation of mid %d", mid)
         self.msg_statuses[mid].receive()
 
     def run(self, msg_count, msg_size, qos=1):
@@ -116,7 +117,7 @@ class TrackingSender():
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
             self.msg_statuses[mid] = MsgStatus(mid, len(payload))
-        logging.info("Finished publish %d msgs of %d bytes at qos %d", msg_count, msg_size, qos)
+        self.log.info("Finished publish %d msgs of %d bytes at qos %d", msg_count, msg_size, qos)
 
         finished = False
         while not finished:
@@ -124,10 +125,10 @@ class TrackingSender():
             finished = len(missing) == 0
             if finished:
                 break
-            logging.info("Waiting for %d messages to be confirmed still...", len(missing))
+            self.log.info("Waiting for %d messages to be confirmed still...", len(missing))
             time.sleep(2)
             for x in missing:
-                logging.debug(x)
+                self.log.debug(x)
             # FIXME - needs an escape clause here for giving up on messages?
 
     def stats(self):
