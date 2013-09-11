@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+#
+# Copyright (c) 2013, ReMake Electric ehf
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+"""
+An application capable of running listening to a stream of message
+and doing rudimentary verification that all messages arrived and when
+
+Still extremely rudimentary
+"""
+
+import argparse
+import logging
+import os
+import beem.listen
+
+logging.basicConfig(level=logging.DEBUG)
+
+def print_stats(stats):
+    """
+    pretty print a listen stats object
+    """
+    print("Clientid: %s" % stats["clientid"])
+    print("Total messages: %d" % stats["msg_count"])
+    print("Messages per second: %d (%f ms per message)"
+        % (stats["msg_per_sec"], stats["ms_per_msg"]))
+    print("Messages missing: %s" % stats["msg_missing"])
+    print("Messages duplicated: %s" % stats["msg_duplicates"])
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="""
+        Listen to a stream of messages and capture statistics on their timing
+        """)
+
+    parser.add_argument(
+        "-c", "--clientid", default="beem.listr-%d" % os.getpid(),
+        help="""Set the client id of the listner, can be useful for acls
+        Default has pid information appended.
+        """)
+    parser.add_argument(
+        "-H", "--host", default="localhost",
+        help="MQTT host to connect to")
+    parser.add_argument(
+        "-p", "--port", type=int, default=1883,
+        help="Port for remote MQTT host")
+    parser.add_argument(
+        "-q", "--qos", type=int, choices=[0, 1, 2],
+        help="set the mqtt qos for subscription", default=1)
+    parser.add_argument(
+        "-n", "--msg_count", type=int, default=10,
+        help="How many messages to expect")
+    parser.add_argument(
+        "-N", "--client_count", type=int, default=10,
+        help="""How many clients to expect. See docs for examples
+        of how this works""")
+    parser.add_argument(
+        "-t", "--topic", default="mqtt-malaria/+/data/#",
+        help="""Topic to subscribe to, will be sorted into clients by the
+         '+' symbol""")
+
+    options = parser.parse_args()
+
+    ts = beem.listen.TrackingListener(options.host, options.port, options)
+    ts.run(options.msg_count, options.qos)
+    print_stats(ts.stats())
+
+
+if __name__ == "__main__":
+    main()

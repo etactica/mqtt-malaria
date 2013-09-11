@@ -124,9 +124,9 @@ class TrackingSender():
     def _make_topic_default(self, message_seq):
         """
         Default topic generator.
-        Generates topics "test/<clientid>/data/<message_sequence_number>"
+        Generates topics "mqtt-malaria/<clientid>/data/<message_sequence_number>"
         """
-        return "test/%s/data/%d" % (self.cid, message_seq)
+        return "mqtt-malaria/%s/data/%d" % (self.cid, message_seq)
 
     def publish_handler(self, mosq, userdata, mid):
         self.log.debug("Received confirmation of mid %d", mid)
