@@ -91,7 +91,8 @@ class TrackingSender():
         self.make_topic = None
         self.make_payload = None
         # TODO - you _probably_ want to tweak this
-        self.mqttc.max_inflight_messages_set(200)
+        if hasattr(self.mqttc, "max_inflight_messages_set"):
+            self.mqttc.max_inflight_messages_set(200)
         rc = self.mqttc.connect(host, port, 60)
         if rc:
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
