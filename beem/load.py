@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 from __future__ import division
 
-import collections
 import logging
 import math
 import random
@@ -71,15 +70,15 @@ class TrackingSender():
     This is a _single_ producer, it's not a huge load testing thing by itself
     """
     msg_statuses = {}
-    log = logging.getLogger(__name__)
     def __init__(self, host, port, cid):
         self.cid = cid
+        self.log = logging.getLogger(__name__ + ":" + cid)
         self.mqttc = mosquitto.Mosquitto(cid)
         self.mqttc.on_publish = self.publish_handler
         self.make_topic = None
         self.make_payload = None
-        # TODO - you _may_ want to tweak this
-        # self.mqttc.max_inflight_messages_set(yyyyy)
+        # TODO - you _probably_ want to tweak this
+        self.mqttc.max_inflight_messages_set(200)
         rc = self.mqttc.connect(host, port, 60)
         if rc:
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
@@ -93,6 +92,11 @@ class TrackingSender():
             return self._make_payload_default(msg_size)
     
     def _make_payload_default(self, msg_size):
+        """
+        Default payload generator.
+        Generates gaussian normal hex digits centered around msg_size
+        The variance is msg_size/20
+        """
         real_size = int(random.gauss(msg_size, msg_size / 20))
         msg = ''.join(random.choice(string.hexdigits) for x in range(real_size))
         return msg
@@ -104,13 +108,31 @@ class TrackingSender():
             return self._make_topic_default(msg_seq)
 
     def _make_topic_default(self, message_seq):
+        """
+        Default topic generator.
+        Generates topics "test/<clientid>/data/<message_sequence_number>"
+        """
         return "test/%s/data/%d" % (self.cid, message_seq)
 
     def publish_handler(self, mosq, userdata, mid):
         self.log.debug("Received confirmation of mid %d", mid)
-        self.msg_statuses[mid].receive()
+        handle = self.msg_statuses.get(mid, None)
+        while not handle:
+            self.log.warn("Received a publish for mid: %d before we saved its creation", mid)
+            time.sleep(0.5)
+            handle = self.msg_statuses.get(mid, None)
+        handle.receive()
 
     def run(self, msg_count, msg_size, qos=1):
+        """
+        Start a (long lived) process publishing msg_count messages
+        of msg_size at the provided qos.
+        if topic/payload generators are not provided, the default handlers
+        are used.
+
+        This process blocks until _all_ published messages have been acked by
+        the publishing library.
+        """
         for i in range(msg_count):
             payload = self._make_payload(i, msg_size)
             topic = self._make_topic(i)
@@ -126,12 +148,16 @@ class TrackingSender():
             if finished:
                 break
             self.log.info("Waiting for %d messages to be confirmed still...", len(missing))
-            time.sleep(2)
+            time.sleep(2) # This is too long for short tests.
             for x in missing:
                 self.log.debug(x)
             # FIXME - needs an escape clause here for giving up on messages?
 
     def stats(self):
+        """
+        Generate a set of statistics for the set of message responses.
+        count, success rate, min/max/mean/stddev are all generated.
+        """
         successful = [x for x in self.msg_statuses.values() if x.received]
         rate = len(successful) / len(self.msg_statuses)
         # Let's work in milliseconds now
@@ -140,6 +166,7 @@ class TrackingSender():
         squares = [x * x for x in [q - mean for q in times]]
         stddev = math.sqrt(sum(squares) / len(times))
         return {
+            "clientid": self.cid,
             "count_ok": len(successful),
             "count_total": len(self.msg_statuses),
             "rate_ok" : rate,
