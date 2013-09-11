@@ -58,13 +58,13 @@ def custom_make_payload(seq, size):
     """
     return "Message %d was meant to be %d bytes long hehe" % (seq, size)
 
-def worker(options):
+def worker(options, proc_num):
     """
     Wrapper to run a test and push the results back onto a queue.
     Modify this to provide custom message generation routines.
     """
-    # Get the pid of _this_ process.
-    cid = "%s-%d" % (options.clientid, os.getpid())
+    # Make a new clientid with our worker process number
+    cid = "%s-%d" % (options.clientid, proc_num)
     ts = beem.load.TrackingSender(options.host, options.port, cid)
     # Provide a custom topic generator
     #ts.make_topic = custom_make_topic
@@ -149,7 +149,7 @@ unless the make_payload method is overridden""")
     options = parser.parse_args()
 
     pool = multiprocessing.Pool(processes=options.processes)
-    result_set = [pool.apply_async(worker, (options,)) for x in range(options.processes)]
+    result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
     remaining = options.processes
 
     stats_set = []
