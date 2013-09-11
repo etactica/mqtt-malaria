@@ -6,6 +6,11 @@ Contributions welcome!
 Requires mosquitto python library 1.x or greater. (1.2 will give arguably
 better performance as the "max messages in flight" parameter can be tweaked)
 
+Similar Work
+============
+http://affolter-engineering.ch/mqtt-randompub/ Appeared as I was finishing this.
+https://github.com/chirino/mqtt-benchmark
+
 ```
 usage: load_publisher.py [-h] [-c CLIENTID] [-H HOST] [-p PORT] [-q {0,1,2}]
                          [-n MSG_COUNT] [-s MSG_SIZE] [-P PROCESSES]
