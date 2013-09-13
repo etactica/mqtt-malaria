@@ -42,33 +42,38 @@ class MsgStatus():
     Allows recording statistics of a published message.
     Used internally to generate statistics for the run.
     """
-    def __init__(self, mid, real_size):
-        self.mid = mid
-        self.size = real_size
-        self.received = False
-        self.time_created = time.time()
-        self.time_received = None
+    def __key(self):
+        # Yes, we only care about these.  This lets us find duplicates easily
+        # TODO - perhaps time_created could go here too?
+        return (self.client, self.mid)
 
-    def receive(self):
-        self.received = True
+    def __init__(self, msg):
+        segments = msg.topic.split("/")
+        self.client = segments[1]
+        self.mid = int(segments[3])
+        self.time_created = time.mktime(time.localtime(float(msg.payload)))
         self.time_received = time.time()
 
     def time_flight(self):
         return self.time_received - self.time_created
 
     def __repr__(self):
-        if self.received:
-            return ("MSG(%d) OK, flight time: %f seconds" % (self.mid, self.time_flight()))
-        else:
-            return ("MSG(%d) INCOMPLETE in flight for %f seconds so far"
-                % (self.mid, time.time() - self.time_created))
+        return ("MSG(%s:%d) OK, flight time: %f ms (c:%f, r:%f)"
+            % (self.client, self.mid, self.time_flight() * 1000, self.time_created, self.time_received))
+
+    def __eq__(x, y):
+        return x.__key() == y.__key()
+
+    def __hash__(self):
+        return hash(self.__key())
+
 
 class TrackingListener():
     """
     An MQTT message subscriber that tracks an expected message sequence
     This is a port of a very simplistic internal listener, needs a lot of work yet
     """
-    msg_statuses = {}
+    msg_statuses = []
     def __init__(self, host, port, opts):
         self.options = opts
         self.cid = opts.clientid
@@ -76,7 +81,7 @@ class TrackingListener():
         self.mqttc = mosquitto.Mosquitto(self.cid)
         self.mqttc.on_message = self.msg_handler
         self.listen_topic = opts.topic
-        self.rxids = []
+        self.time_start = None
         # TODO - you _probably_ want to tweak this
         self.mqttc.max_inflight_messages_set(200)
         rc = self.mqttc.connect(host, port, 60)
@@ -90,9 +95,10 @@ class TrackingListener():
         # TODO - we should change that!
         # get timing infomation in there to help with flight stats
         self.log.debug("heard a message on topic: %s", msg.topic)
-        segments = msg.topic.split("/")
-        sequence = segments[-1]
-        self.rxids.append(int(sequence))
+        if not self.time_start:
+            self.time_start = time.time()
+        ms = MsgStatus(msg)
+        self.msg_statuses.append(ms)
 
     def run(self, msg_count, qos=1):
         """
@@ -109,11 +115,10 @@ class TrackingListener():
         self.log.info("Listening for %d messages on topic %s (q%d)",
             msg_count, self.listen_topic, qos)
         rc = self.mqttc.subscribe(self.listen_topic, qos)
-        self.time_start = time.time()
-        while len(self.rxids) < msg_count:
+        while len(self.msg_statuses) < msg_count:
             # let the mosquitto thread fill us up
             time.sleep(1)
-            self.log.info("Still waiting for %d messages", msg_count - len(self.rxids))
+            self.log.info("Still waiting for %d messages", msg_count - len(self.msg_statuses))
         self.time_end = time.time()
 
         self.mqttc.loop_stop()
@@ -121,12 +126,23 @@ class TrackingListener():
 
     def stats(self):
         expected = set(range(self.expected_count))
-        msg_count = len(self.rxids)
+        actual = [x.mid for x in self.msg_statuses]
+        msg_count = len(self.msg_statuses)
+        flight_times = [x.time_flight() for x in self.msg_statuses]
+        mean = sum(flight_times) / len(flight_times)
+        squares = [x * x for x in [q - mean for q in flight_times]]
+        stddev = math.sqrt(sum(squares) / len(flight_times))
+
         return {
             "clientid": self.cid,
-            "msg_duplicates": [x for x,y in collections.Counter(self.rxids).items() if y > 1],
-            "msg_missing": [x for x in sorted(expected.difference(set(self.rxids)))],
+            "msg_duplicates": [x for x,y in collections.Counter(self.msg_statuses).items() if y > 1],
+            "msg_missing": [x for x in sorted(expected.difference(set(actual)))],
             "msg_count": msg_count,
             "ms_per_msg": (self.time_end - self.time_start) / msg_count * 1000,
-            "msg_per_sec": msg_count/(self.time_end - self.time_start)
+            "msg_per_sec": msg_count/(self.time_end - self.time_start),
+            "time_total": self.time_end - self.time_start,
+            "flight_time_mean": mean,
+            "flight_time_stddev": stddev,
+            "flight_time_max": max(flight_times),
+            "flight_time_min": min(flight_times)
         }

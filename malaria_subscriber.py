@@ -43,10 +43,15 @@ def print_stats(stats):
     """
     print("Clientid: %s" % stats["clientid"])
     print("Total messages: %d" % stats["msg_count"])
+    print("Total time: %0.2f secs" % stats["time_total"])
     print("Messages per second: %d (%f ms per message)"
         % (stats["msg_per_sec"], stats["ms_per_msg"]))
     print("Messages missing: %s" % stats["msg_missing"])
     print("Messages duplicated: %s" % stats["msg_duplicates"])
+    print("Flight time mean:   %0.2f ms" % (stats["flight_time_mean"] * 1000))
+    print("Flight time stddev: %0.2f ms" % (stats["flight_time_stddev"] * 1000))
+    print("Flight time min:    %0.2f ms" % (stats["flight_time_min"] * 1000))
+    print("Flight time max:    %0.2f ms" % (stats["flight_time_max"] * 1000))
 
 
 def main():
