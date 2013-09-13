@@ -58,10 +58,14 @@ def worker(options, proc_num):
     # Make a new clientid with our worker process number
     cid = "%s-%d" % (options.clientid, proc_num)
     ts = beem.load.TrackingSender(options.host, options.port, cid)
+    msg_generator = None
+    if options.timing:
+        msg_generator = beem.msgs.TimeTracking(cid, options.msg_count)
+    else:
+        msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
     # Provide a custom generator
     #msg_generator = my_custom_msg_generator(options.msg_count)
-    #ts.run(options.msg_count, msg_generator, qos=options.qos)
-    ts.run(options.msg_count, qos=options.qos)
+    ts.run(msg_generator, qos=options.qos)
     return ts.stats()
 
 
@@ -131,8 +135,11 @@ def main():
         help="How many messages to send")
     parser.add_argument(
         "-s", "--msg_size", type=int, default=100,
-        help="""Size of messages to send. This will be gaussian at (x, x/20)
-unless the make_payload method is overridden""")
+        help="Size of messages to send. This will be gaussian at (x, x/20)")
+    parser.add_argument(
+        "-t", "--timing", action="store_true",
+        help="""Message bodies will contain timing information instead of random
+        hex characters.  This overrides the --msg-size option, obviously""")
     parser.add_argument(
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")

@@ -37,7 +37,7 @@ import time
 
 import mosquitto
 
-import beem
+import beem.msgs
 
 class MsgStatus():
     """
@@ -108,19 +108,15 @@ class TrackingSender():
             handle = self.msg_statuses.get(mid, None)
         handle.receive()
 
-    def run(self, msg_count, msg_generator=None, qos=1):
+    def run(self, msg_generator, qos=1):
         """
         Start a (long lived) process publishing messages
-        of of the desired qos from the provided generator
-        if msg_generator is notprovided, a default handler is used
-        (which is why msg_count is required)
+        from the provided generator at the requested qos
 
         This process blocks until _all_ published messages have been acked by
         the publishing library.
         """
         publish_count = 0
-        if not msg_generator:
-            msg_generator = beem.TimeTrackingPayloadGenerator(self.cid, msg_count)
         for seq,topic,payload in msg_generator:
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
