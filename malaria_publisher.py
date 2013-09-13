@@ -33,6 +33,8 @@ import argparse
 import logging
 import multiprocessing
 import os
+import time
+
 import beem
 import beem.load
 
@@ -80,6 +82,8 @@ def print_stats(stats):
     print("Message timing stddev %.2f ms" % stats["time_stddev"])
     print("Message timing min    %.2f ms" % stats["time_min"])
     print("Message timing max    %.2f ms" % stats["time_max"])
+    print("Messages per second   %.2f" % stats["msgs_per_sec"])
+    print("Total time            %.2f secs" % stats["time_total"])
 
 def aggregate_stats(stats_set):
     """
@@ -90,10 +94,8 @@ def aggregate_stats(stats_set):
     Likewise, aggregate "stddev" is a simple mean of the stddev from each
     process, not an entire population stddev.
     """
-    mins = [x["time_min"] for x in stats_set]
-    maxes = [x["time_max"] for x in stats_set]
-    means = [x["time_mean"] for x in stats_set]
-    stddevs = [x["time_stddev"] for x in stats_set]
+    def naive_average(the_set):
+        return sum(the_set) / len(the_set)
     count_ok = sum([x["count_ok"] for x in stats_set])
     count_total = sum([x["count_total"] for x in stats_set])
     cid = "Aggregate stats (simple avg) for %d processes" % len(stats_set)
@@ -102,10 +104,11 @@ def aggregate_stats(stats_set):
         "count_ok": count_ok,
         "count_total": count_total,
         "rate_ok": count_ok / count_total,
-        "time_min": sum(mins) / len(mins),
-        "time_max": sum(maxes) / len(maxes),
-        "time_mean": sum(means) / len(means),
-        "time_stddev": sum(stddevs) / len(stddevs)
+        "time_min": naive_average([x["time_min"] for x in stats_set]),
+        "time_max": naive_average([x["time_max"] for x in stats_set]),
+        "time_mean": naive_average([x["time_mean"] for x in stats_set]),
+        "time_stddev": naive_average([x["time_stddev"] for x in stats_set]),
+        "msgs_per_sec": naive_average([x["msgs_per_sec"] for x in stats_set]),
     }
 
 
@@ -147,6 +150,7 @@ def main():
     options = parser.parse_args()
 
     pool = multiprocessing.Pool(processes=options.processes)
+    time_start = time.time()
     result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
     remaining = options.processes
 
@@ -162,8 +166,10 @@ def main():
                 stats_set.append(s)
         except multiprocessing.TimeoutError:
             pass
+    time_end = time.time()
 
     agg_stats = aggregate_stats(stats_set)
+    agg_stats["time_total"] = time_end - time_start
     print_stats(agg_stats)
 
 

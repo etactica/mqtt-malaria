@@ -117,6 +117,7 @@ class TrackingSender():
         the publishing library.
         """
         publish_count = 0
+        self.time_start = time.time()
         for seq,topic,payload in msg_generator:
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
@@ -135,6 +136,7 @@ class TrackingSender():
             for x in missing:
                 self.log.debug(x)
             # FIXME - needs an escape clause here for giving up on messages?
+        self.time_end = time.time()
 
     def stats(self):
         """
@@ -156,7 +158,9 @@ class TrackingSender():
             "time_mean" : mean,
             "time_min" : min(times),
             "time_max" : max(times),
-            "time_stddev" : stddev
+            "time_stddev" : stddev,
+            "msgs_per_sec": len(successful) / (self.time_end - self.time_start),
+            "time_total": self.time_end - self.time_start
         }
         
 
