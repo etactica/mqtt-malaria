@@ -8,8 +8,8 @@ better performance as the "max messages in flight" parameter can be tweaked)
 
 Similar Work
 ============
-http://affolter-engineering.ch/mqtt-randompub/ Appeared as I was finishing this.
-https://github.com/chirino/mqtt-benchmark
+* http://affolter-engineering.ch/mqtt-randompub/ Appeared as I was finishing this.
+* https://github.com/chirino/mqtt-benchmark
 
 ```
 usage: load_publisher.py [-h] [-c CLIENTID] [-H HOST] [-p PORT] [-q {0,1,2}]

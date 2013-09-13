@@ -3,3 +3,7 @@
 
 .vagrant
 .env
+
+RELEASE-VERSION
+dist
+*.egg-info
