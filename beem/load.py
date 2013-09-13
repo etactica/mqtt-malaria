@@ -37,6 +37,8 @@ import time
 
 import mosquitto
 
+import beem
+
 class MsgStatus():
     """
     Allows recording statistics of a published message.
@@ -77,7 +79,7 @@ class TrackingSender():
     Example:
       cid = "Test-clientid-%d" % os.getpid()
       ts = TrackingSender("mqtt.example.org", 1883, cid)
-      ts.run(100, 1024)
+      ts.run(100)
       stats = ts.stats()
       print(stats["rate_ok"])
       print(stats["time_stddev"])
@@ -88,8 +90,6 @@ class TrackingSender():
         self.log = logging.getLogger(__name__ + ":" + cid)
         self.mqttc = mosquitto.Mosquitto(cid)
         self.mqttc.on_publish = self.publish_handler
-        self.make_topic = None
-        self.make_payload = None
         # TODO - you _probably_ want to tweak this
         if hasattr(self.mqttc, "max_inflight_messages_set"):
             self.mqttc.max_inflight_messages_set(200)
@@ -98,35 +98,6 @@ class TrackingSender():
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
             # umm, how? 
         self.mqttc.loop_start()
-
-    def _make_payload(self, msg_seq, msg_size):
-        if self.make_payload:
-            return self.make_payload(msg_seq, msg_size)
-        else:
-            return self._make_payload_default(msg_size)
-    
-    def _make_payload_default(self, msg_size):
-        """
-        Default payload generator.
-        Generates gaussian normal hex digits centered around msg_size
-        The variance is msg_size/20
-        """
-        real_size = int(random.gauss(msg_size, msg_size / 20))
-        msg = ''.join(random.choice(string.hexdigits) for x in range(real_size))
-        return msg
-
-    def _make_topic(self, msg_seq):
-        if self.make_topic:
-            return self.make_topic(msg_seq)
-        else:
-            return self._make_topic_default(msg_seq)
-
-    def _make_topic_default(self, message_seq):
-        """
-        Default topic generator.
-        Generates topics "mqtt-malaria/<clientid>/data/<message_sequence_number>"
-        """
-        return "mqtt-malaria/%s/data/%d" % (self.cid, message_seq)
 
     def publish_handler(self, mosq, userdata, mid):
         self.log.debug("Received confirmation of mid %d", mid)
@@ -137,23 +108,25 @@ class TrackingSender():
             handle = self.msg_statuses.get(mid, None)
         handle.receive()
 
-    def run(self, msg_count, msg_size, qos=1):
+    def run(self, msg_count, msg_generator=None, qos=1):
         """
-        Start a (long lived) process publishing msg_count messages
-        of msg_size at the provided qos.
-        if topic/payload generators are not provided, the default handlers
-        are used.
+        Start a (long lived) process publishing messages
+        of of the desired qos from the provided generator
+        if msg_generator is notprovided, a default handler is used
+        (which is why msg_count is required)
 
         This process blocks until _all_ published messages have been acked by
         the publishing library.
         """
-        for i in range(msg_count):
-            payload = self._make_payload(i, msg_size)
-            topic = self._make_topic(i)
+        publish_count = 0
+        if not msg_generator:
+            msg_generator = beem.TimeTrackingPayloadGenerator(self.cid, msg_count)
+        for seq,topic,payload in msg_generator:
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
             self.msg_statuses[mid] = MsgStatus(mid, len(payload))
-        self.log.info("Finished publish %d msgs of %d bytes at qos %d", msg_count, msg_size, qos)
+            publish_count += 1
+        self.log.info("Finished publish %d msgs at qos %d", publish_count, qos)
 
         finished = False
         while not finished:

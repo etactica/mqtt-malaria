@@ -33,30 +33,22 @@ import argparse
 import logging
 import multiprocessing
 import os
+import beem
 import beem.load
 
 logging.basicConfig(level=logging.INFO)
 
-def custom_make_topic(seq):
+def my_custom_msg_generator(sequence_length):
     """
-    An example of a custom topic generator.
+    An example of a custom msg generator.
 
-    Any string at all can be returned, the sequence number is the sequence
-    within the process
+    You must return a tuple of sequence number, topic and payload
+    on each iteration.
     """
-    return "karlosssssss_%d" % seq
-
-def custom_make_payload(seq, size):
-    """
-    An example of a custom payload generator.
-
-    Anything at all can be returned, it is passed directly to
-    mosquitto's publish call.
-
-    seq is the sequence number of this message in the stream.
-    size is the requested size of message to be generated.
-    """
-    return "Message %d was meant to be %d bytes long hehe" % (seq, size)
+    seq = 0
+    while seq < sequence_length:
+        yield (seq, "magic_topic", "very boring payload")
+        seq+=1
 
 def worker(options, proc_num):
     """
@@ -66,11 +58,10 @@ def worker(options, proc_num):
     # Make a new clientid with our worker process number
     cid = "%s-%d" % (options.clientid, proc_num)
     ts = beem.load.TrackingSender(options.host, options.port, cid)
-    # Provide a custom topic generator
-    #ts.make_topic = custom_make_topic
-    # Or a custom payload generator
-    #ts.make_payload = custom_make_payload
-    ts.run(options.msg_count, options.msg_size, options.qos)
+    # Provide a custom generator
+    #msg_generator = my_custom_msg_generator(options.msg_count)
+    #ts.run(options.msg_count, msg_generator, qos=options.qos)
+    ts.run(options.msg_count, qos=options.qos)
     return ts.stats()
 
 
