@@ -55,6 +55,9 @@ optional arguments:
                         (multiprocessing) (default: 1)
 ```
 
+Examples
+--------
+
 To fire up 8 processes each sending 10000 messages of ~100 bytes each,
 sending as fast as the code allows.
 ```
@@ -163,7 +166,8 @@ optional arguments:
                         the '+' symbol (default: mqtt-malaria/+/data/#)
 ```
 
-Example Usage:
+Examples
+--------
 To monitor a publisher of 500 processes, 1000 msgs per process:
 ```
 python malaria_subscriber.py -n 1000 -N 500
