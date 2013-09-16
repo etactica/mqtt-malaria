@@ -38,6 +38,7 @@ import time
 
 import beem
 import beem.load
+import beem.msgs
 
 logging.basicConfig(level=logging.INFO)
 

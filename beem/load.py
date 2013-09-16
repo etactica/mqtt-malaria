@@ -31,13 +31,9 @@ from __future__ import division
 
 import logging
 import math
-import random
-import string
 import time
 
 import mosquitto
-
-import beem.msgs
 
 
 class MsgStatus():

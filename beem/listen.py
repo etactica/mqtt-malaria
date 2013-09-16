@@ -31,8 +31,6 @@ from __future__ import division
 import collections
 import logging
 import math
-import random
-import string
 import time
 
 import mosquitto
