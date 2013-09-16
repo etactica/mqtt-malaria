@@ -45,11 +45,11 @@ class MsgStatus():
     def __key(self):
         # Yes, we only care about these.  This lets us find duplicates easily
         # TODO - perhaps time_created could go here too?
-        return (self.client, self.mid)
+        return (self.cid, self.mid)
 
     def __init__(self, msg):
         segments = msg.topic.split("/")
-        self.client = segments[1]
+        self.cid = segments[1]
         self.mid = int(segments[3])
         self.time_created = time.mktime(time.localtime(float(msg.payload)))
         self.time_received = time.time()
@@ -59,7 +59,7 @@ class MsgStatus():
 
     def __repr__(self):
         return ("MSG(%s:%d) OK, flight time: %f ms (c:%f, r:%f)"
-            % (self.client, self.mid, self.time_flight() * 1000, self.time_created, self.time_received))
+            % (self.cid, self.mid, self.time_flight() * 1000, self.time_created, self.time_received))
 
     def __eq__(x, y):
         return x.__key() == y.__key()
@@ -91,52 +91,56 @@ class TrackingListener():
         self.mqttc.loop_start()
 
     def msg_handler(self, mosq, userdata, msg):
+        # WARNING: this _must_ release as quickly as possible!
         # get the sequence id from the topic, payload contains random garbage by default
         # TODO - we should change that!
         # get timing infomation in there to help with flight stats
-        self.log.debug("heard a message on topic: %s", msg.topic)
+        #self.log.debug("heard a message on topic: %s", msg.topic)
         if not self.time_start:
             self.time_start = time.time()
         ms = MsgStatus(msg)
         self.msg_statuses.append(ms)
 
-    def run(self, msg_count, qos=1):
+    def run(self, qos=1):
         """
-        Start a (long lived) process waiting for the specified number of
-        messages to arrive.
+        Start a (long lived) process waiting for messages to arrive.
+        The number of clients and messages per client that are expected
+        are set at creation time
 
-        if topic/payload generators are not provided, the default handlers
-        are used.
-
-        This process blocks until _all_ published messages have been acked by
-        the publishing library.
         """
-        self.expected_count = msg_count
+        self.expected = self.options.msg_count * self.options.client_count
         self.log.info("Listening for %d messages on topic %s (q%d)",
-            msg_count, self.listen_topic, qos)
+            self.expected, self.listen_topic, qos)
         rc = self.mqttc.subscribe(self.listen_topic, qos)
-        while len(self.msg_statuses) < msg_count:
+        while len(self.msg_statuses) < self.expected:
             # let the mosquitto thread fill us up
             time.sleep(1)
-            self.log.info("Still waiting for %d messages", msg_count - len(self.msg_statuses))
+            self.log.info("Still waiting for %d messages", self.expected - len(self.msg_statuses))
         self.time_end = time.time()
 
         self.mqttc.loop_stop()
         self.mqttc.disconnect()
 
     def stats(self):
-        expected = set(range(self.expected_count))
-        actual = [x.mid for x in self.msg_statuses]
         msg_count = len(self.msg_statuses)
         flight_times = [x.time_flight() for x in self.msg_statuses]
         mean = sum(flight_times) / len(flight_times)
         squares = [x * x for x in [q - mean for q in flight_times]]
         stddev = math.sqrt(sum(squares) / len(flight_times))
 
+        actual_clients = set([x.cid for x in self.msg_statuses])
+        per_client_expected = range(1, self.options.msg_count + 1)
+        per_client_real = {}
+        per_client_missing = {}
+        for cid in actual_clients:
+            per_client_real[cid] = [x.mid for x in self.msg_statuses if x.cid == cid]
+            per_client_missing[cid] = list(set(per_client_expected).difference(set(per_client_real[cid])))
+
         return {
             "clientid": self.cid,
+            "client_count": len(actual_clients),
             "msg_duplicates": [x for x,y in collections.Counter(self.msg_statuses).items() if y > 1],
-            "msg_missing": [x for x in sorted(expected.difference(set(actual)))],
+            "msg_missing": per_client_missing,
             "msg_count": msg_count,
             "ms_per_msg": (self.time_end - self.time_start) / msg_count * 1000,
             "msg_per_sec": msg_count/(self.time_end - self.time_start),

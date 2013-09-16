@@ -42,11 +42,14 @@ def print_stats(stats):
     pretty print a listen stats object
     """
     print("Clientid: %s" % stats["clientid"])
+    print("Total clients tracked: %s" % stats["client_count"])
     print("Total messages: %d" % stats["msg_count"])
     print("Total time: %0.2f secs" % stats["time_total"])
     print("Messages per second: %d (%f ms per message)"
         % (stats["msg_per_sec"], stats["ms_per_msg"]))
-    print("Messages missing: %s" % stats["msg_missing"])
+    for cid,dataset in stats["msg_missing"].items():
+        if len(dataset) > 0:
+            print("Messages missing for client %s: %s" % (cid, dataset))
     print("Messages duplicated: %s" % stats["msg_duplicates"])
     print("Flight time mean:   %0.2f ms" % (stats["flight_time_mean"] * 1000))
     print("Flight time stddev: %0.2f ms" % (stats["flight_time_stddev"] * 1000))
@@ -79,7 +82,7 @@ def main():
         "-n", "--msg_count", type=int, default=10,
         help="How many messages to expect")
     parser.add_argument(
-        "-N", "--client_count", type=int, default=10,
+        "-N", "--client_count", type=int, default=1,
         help="""How many clients to expect. See docs for examples
         of how this works""")
     parser.add_argument(
@@ -90,7 +93,7 @@ def main():
     options = parser.parse_args()
 
     ts = beem.listen.TrackingListener(options.host, options.port, options)
-    ts.run(options.msg_count, options.qos)
+    ts.run(options.qos)
     print_stats(ts.stats())
 
 
