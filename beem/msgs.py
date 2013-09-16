@@ -28,6 +28,7 @@ import string
 import random
 import time
 
+
 def TimeTracking(cid, sequence_size):
     """
     Message generator creating payloads with timestamps

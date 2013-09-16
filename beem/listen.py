@@ -37,6 +37,7 @@ import time
 
 import mosquitto
 
+
 class MsgStatus():
     """
     Allows recording statistics of a published message.
@@ -59,7 +60,8 @@ class MsgStatus():
 
     def __repr__(self):
         return ("MSG(%s:%d) OK, flight time: %f ms (c:%f, r:%f)"
-            % (self.cid, self.mid, self.time_flight() * 1000, self.time_created, self.time_received))
+                % (self.cid, self.mid, self.time_flight() * 1000,
+                   self.time_created, self.time_received))
 
     def __eq__(x, y):
         return x.__key() == y.__key()
@@ -71,9 +73,11 @@ class MsgStatus():
 class TrackingListener():
     """
     An MQTT message subscriber that tracks an expected message sequence
-    This is a port of a very simplistic internal listener, needs a lot of work yet
+    and generates timing, duplicate/missing and monitors for drops
     """
+
     msg_statuses = []
+
     def __init__(self, host, port, opts):
         self.options = opts
         self.cid = opts.clientid
@@ -87,7 +91,7 @@ class TrackingListener():
         rc = self.mqttc.connect(host, port, 60)
         if rc:
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
-            # umm, how? 
+            # umm, how?
         self.mqttc.subscribe('$SYS/broker/publish/messages/dropped', 0)
         self.drop_count = None
         self.dropping = False
@@ -95,17 +99,16 @@ class TrackingListener():
 
     def msg_handler(self, mosq, userdata, msg):
         # WARNING: this _must_ release as quickly as possible!
-        # get the sequence id from the topic, payload contains random garbage by default
-        # TODO - we should change that!
-        # get timing infomation in there to help with flight stats
+        # get the sequence id from the topic
         #self.log.debug("heard a message on topic: %s", msg.topic)
         if msg.topic == '$SYS/broker/publish/messages/dropped':
             if self.drop_count:
-                self.log.warn("Drop count has increased to %d", int(msg.payload) - self.drop_count)
+                self.log.warn("Drop count has increased by %d",
+                              int(msg.payload) - self.drop_count)
                 self.dropping = True
             else:
                 self.drop_count = int(msg.payload)
-                self.log.debug("Storing initial drop count: %d", self.drop_count)
+                self.log.debug("Initial drop count: %d", self.drop_count)
             return
         if not self.time_start:
             self.time_start = time.time()
@@ -120,16 +123,18 @@ class TrackingListener():
 
         """
         self.expected = self.options.msg_count * self.options.client_count
-        self.log.info("Listening for %d messages on topic %s (q%d)",
+        self.log.info(
+            "Listening for %d messages on topic %s (q%d)",
             self.expected, self.listen_topic, qos)
         rc = self.mqttc.subscribe(self.listen_topic, qos)
         while len(self.msg_statuses) < self.expected:
             # let the mosquitto thread fill us up
             time.sleep(1)
-            self.log.info("Still waiting for %d messages", self.expected - len(self.msg_statuses))
+            self.log.info("Still waiting for %d messages",
+                          self.expected - len(self.msg_statuses))
             if self.dropping:
                 self.log.error("Detected drops are occuring, aborting test!")
-                break;
+                break
         self.time_end = time.time()
 
         self.mqttc.loop_stop()
@@ -154,7 +159,7 @@ class TrackingListener():
             "clientid": self.cid,
             "client_count": len(actual_clients),
             "test_complete": not self.dropping,
-            "msg_duplicates": [x for x,y in collections.Counter(self.msg_statuses).items() if y > 1],
+            "msg_duplicates": [x for x, y in collections.Counter(self.msg_statuses).items() if y > 1],
             "msg_missing": per_client_missing,
             "msg_count": msg_count,
             "ms_per_msg": (self.time_end - self.time_start) / msg_count * 1000,

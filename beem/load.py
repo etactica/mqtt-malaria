@@ -39,6 +39,7 @@ import mosquitto
 
 import beem.msgs
 
+
 class MsgStatus():
     """
     Allows recording statistics of a published message.
@@ -60,10 +61,12 @@ class MsgStatus():
 
     def __repr__(self):
         if self.received:
-            return ("MSG(%d) OK, flight time: %f seconds" % (self.mid, self.time_flight()))
+            return ("MSG(%d) OK, flight time: %f seconds"
+                    % (self.mid, self.time_flight()))
         else:
             return ("MSG(%d) INCOMPLETE in flight for %f seconds so far"
-                % (self.mid, time.time() - self.time_created))
+                    % (self.mid, time.time() - self.time_created))
+
 
 class TrackingSender():
     """
@@ -85,6 +88,7 @@ class TrackingSender():
       print(stats["time_stddev"])
     """
     msg_statuses = {}
+
     def __init__(self, host, port, cid):
         self.cid = cid
         self.log = logging.getLogger(__name__ + ":" + cid)
@@ -96,7 +100,7 @@ class TrackingSender():
         rc = self.mqttc.connect(host, port, 60)
         if rc:
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
-            # umm, how? 
+            # umm, how?
         self.mqttc.loop_start()
 
     def publish_handler(self, mosq, userdata, mid):
@@ -118,7 +122,7 @@ class TrackingSender():
         """
         publish_count = 0
         self.time_start = time.time()
-        for seq,topic,payload in msg_generator:
+        for seq, topic, payload in msg_generator:
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
             self.msg_statuses[mid] = MsgStatus(mid, len(payload))
@@ -131,8 +135,9 @@ class TrackingSender():
             finished = len(missing) == 0
             if finished:
                 break
-            self.log.info("Waiting for %d messages to be confirmed still...", len(missing))
-            time.sleep(2) # This is too long for short tests.
+            mc = len(missing)
+            self.log.info("Still waiting for %d messages to be confirmed.", mc)
+            time.sleep(2)  # This is too long for short tests.
             for x in missing:
                 self.log.debug(x)
             # FIXME - needs an escape clause here for giving up on messages?
@@ -154,13 +159,11 @@ class TrackingSender():
             "clientid": self.cid,
             "count_ok": len(successful),
             "count_total": len(self.msg_statuses),
-            "rate_ok" : rate,
-            "time_mean" : mean,
-            "time_min" : min(times),
-            "time_max" : max(times),
-            "time_stddev" : stddev,
+            "rate_ok": rate,
+            "time_mean": mean,
+            "time_min": min(times),
+            "time_max": max(times),
+            "time_stddev": stddev,
             "msgs_per_sec": len(successful) / (self.time_end - self.time_start),
             "time_total": self.time_end - self.time_start
         }
-        
-
