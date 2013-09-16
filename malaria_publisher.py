@@ -33,6 +33,7 @@ import argparse
 import logging
 import multiprocessing
 import os
+import random
 import time
 
 import beem
@@ -65,8 +66,13 @@ def worker(options, proc_num):
         msg_generator = beem.msgs.TimeTracking(cid, options.msg_count)
     else:
         msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
+
+    if options.msgs_per_second > 0:
+        msg_generator = beem.msgs.RateLimited(msg_generator, options.msgs_per_second)
     # Provide a custom generator
     #msg_generator = my_custom_msg_generator(options.msg_count)
+    # This helps introduce jitter so you don't have many threads all in sync
+    time.sleep(random.uniform(0,3))
     ts.run(msg_generator, qos=options.qos)
     return ts.stats()
 
@@ -143,6 +149,10 @@ def main():
         "-t", "--timing", action="store_true",
         help="""Message bodies will contain timing information instead of random
         hex characters.  This overrides the --msg-size option, obviously""")
+    parser.add_argument(
+        "-T", "--msgs_per_second", type=float, default=0,
+        help="""Each publisher should target sending this many msgs per second,
+        useful for simulating real devices.""")
     parser.add_argument(
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")

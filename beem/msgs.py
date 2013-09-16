@@ -40,6 +40,7 @@ def TimeTracking(cid, sequence_size):
         yield (num, topic, payload)
         num = num + 1
 
+
 def GaussianSize(cid, sequence_size, target_size):
     """
     Message generator creating gaussian distributed message sizes
@@ -53,3 +54,13 @@ def GaussianSize(cid, sequence_size, target_size):
         yield (num, topic, payload)
         num = num + 1
 
+
+def RateLimited(generator, msgs_per_sec):
+    """
+    Wrap an existing generator in a rate limit.
+    This will probably behave somewhat poorly at high rates per sec, as it
+    simply uses time.sleep(1/msg_rate)
+    """
+    for x in generator:
+        yield x
+        time.sleep(1/msgs_per_sec)
