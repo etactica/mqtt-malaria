@@ -47,10 +47,13 @@ def print_stats(stats):
     print("Total time: %0.2f secs" % stats["time_total"])
     print("Messages per second: %d (%f ms per message)"
         % (stats["msg_per_sec"], stats["ms_per_msg"]))
-    for cid,dataset in stats["msg_missing"].items():
-        if len(dataset) > 0:
-            print("Messages missing for client %s: %s" % (cid, dataset))
-    print("Messages duplicated: %s" % stats["msg_duplicates"])
+    if stats["test_complete"]:
+        for cid,dataset in stats["msg_missing"].items():
+            if len(dataset) > 0:
+                print("Messages missing for client %s: %s" % (cid, dataset))
+        print("Messages duplicated: %s" % stats["msg_duplicates"])
+    else:
+        print("Test aborted, unable to gather duplicate/missing stats")
     print("Flight time mean:   %0.2f ms" % (stats["flight_time_mean"] * 1000))
     print("Flight time stddev: %0.2f ms" % (stats["flight_time_stddev"] * 1000))
     print("Flight time min:    %0.2f ms" % (stats["flight_time_min"] * 1000))
