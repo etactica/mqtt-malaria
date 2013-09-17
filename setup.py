@@ -14,7 +14,7 @@ setup(
     description="Attacking MQTT systems with Mosquittos",
     long_description=read('README.md'),
     license="License :: OSI Approved :: BSD License",
-    scripts=["malaria_publisher.py", "malaria_subscriber.py"],
+    scripts=["malaria"],
     packages=[
         'beem'
     ],

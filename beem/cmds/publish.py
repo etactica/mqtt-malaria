@@ -23,14 +23,13 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+#
+# This file implements the "malaria publish" command
 """
-An application capable of running multiple mqtt message publishing processes
-to help with load testing or scalability testing or just to provide a stream
-of messages.
+Publish a stream of messages and capture statistics on their timing.
 """
 
 import argparse
-import logging
 import multiprocessing
 import os
 import random
@@ -39,8 +38,6 @@ import time
 import beem
 import beem.load
 import beem.msgs
-
-logging.basicConfig(level=logging.INFO)
 
 def my_custom_msg_generator(sequence_length):
     """
@@ -119,12 +116,12 @@ def aggregate_stats(stats_set):
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(
+def add_args(subparsers):
+    parser = subparsers.add_parser(
+        "publish",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""
-        Publish a stream of messages and capture statistics on their timing
-        """)
+        description=__doc__,
+        help="Publish a stream of messages")
 
     parser.add_argument(
         "-c", "--clientid", default="beem.loadr-%d" % os.getpid(),
@@ -158,8 +155,10 @@ def main():
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")
 
-    options = parser.parse_args()
+    parser.set_defaults(handler=run)
 
+
+def run(options):
     pool = multiprocessing.Pool(processes=options.processes)
     time_start = time.time()
     result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
@@ -182,7 +181,3 @@ def main():
     agg_stats = aggregate_stats(stats_set)
     agg_stats["time_total"] = time_end - time_start
     print_stats(agg_stats)
-
-
-if __name__ == "__main__":
-    main()

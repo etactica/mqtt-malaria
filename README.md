@@ -6,10 +6,10 @@ Contributions welcome!
 Requires mosquitto python library 1.x or greater. (1.2 will give arguably
 better performance as the "max messages in flight" parameter can be tweaked)
 
-Currently, two tools are provided, malaria_publisher and malaria_subscriber.
+Currently, two tools are provided, malaria publish and malaria subscribe.
 
-malaria_publisher
-=================
+malaria publish
+===============
 The publisher can mimic multiple separate clients, publishing messages of
 a known size, or with time of flight tracking information, at a known rate,
 or simply as fast as possible.
@@ -22,7 +22,7 @@ plugged in, see beem.msgs
 
 
 ```
-usage: malaria_publisher.py [-h] [-c CLIENTID] [-H HOST] [-p PORT]
+usage: malaria publish [-h] [-c CLIENTID] [-H HOST] [-p PORT]
                             [-q {0,1,2}] [-n MSG_COUNT] [-s MSG_SIZE] [-t]
                             [-T MSGS_PER_SECOND] [-P PROCESSES]
 
@@ -61,18 +61,18 @@ Examples
 To fire up 8 processes each sending 10000 messages of ~100 bytes each,
 sending as fast as the code allows.
 ```
-  python malaria_publisher.py -P 8 -n 10000 -H mqtt.example.org -s 100
+  malaria publish -P 8 -n 10000 -H mqtt.example.org -s 100
 ```
 
 To fire up 500 processes, each sending 5 messages per second, each sending
 1000 messages, with time in flight tracking information
 ```
-  python malaria_publisher -t -n 1000 -P 500 -T 5
+  malaria publish -t -n 1000 -P 500 -T 5
 ```
 
 Example output
 ```
-$ python malaria_publisher.py -t -n 100 -P 4
+$ ./malaria publish -t -n 100 -P 4
 Still waiting for results from 4 process(es)
 INFO:beem.load:beem.loadr-9850-1:Finished publish 100 msgs at qos 1
 INFO:beem.load:beem.loadr-9850-1:Waiting for 100 messages to be confirmed still...
@@ -129,7 +129,7 @@ Messages per second   49.78
 Total time            3.35 secs
 ```
 
-malaria_subscriber
+malaria subscribe
 ==================
 The subscriber side can listen to a broker and print out stats as messages 
 are received.  It needs to be told how many messages and how many virtual
@@ -140,7 +140,7 @@ This works in single threaded mode (at present) modelling the use case of a
 central data processor.  It aborts if it ever detects messages being dropped.
 
 ```
-usage: malaria_subscriber.py [-h] [-c CLIENTID] [-H HOST] [-p PORT]
+usage: malaria subscribe [-h] [-c CLIENTID] [-H HOST] [-p PORT]
                              [-q {0,1,2}] [-n MSG_COUNT] [-N CLIENT_COUNT]
                              [-t TOPIC]
 
@@ -170,12 +170,12 @@ Examples
 --------
 To monitor a publisher of 500 processes, 1000 msgs per process:
 ```
-python malaria_subscriber.py -n 1000 -N 500
+malaria subscribe -n 1000 -N 500
 ```
 
 Example output:
 ```
-$ python malaria_subscriber.py -n 1000 -N 500
+$ ./malaria subscribe -n 1000 -N 500
 INFO:beem.listen:beem.listr-8518:Listening for 500000 messages on topic mqtt-malaria/+/data/# (q1)
 DEBUG:beem.listen:beem.listr-8518:Storing initial drop count: 62491
 INFO:beem.listen:beem.listr-8518:Still waiting for 500000 messages

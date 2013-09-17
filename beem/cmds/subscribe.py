@@ -23,19 +23,15 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+#
+# This file implements the "malaria subscribe" command
 """
-An application capable of running listening to a stream of message
-and doing rudimentary verification that all messages arrived and when
-
-Still extremely rudimentary
+Listen to a stream of messages and capture statistics on their timing
 """
 
 import argparse
-import logging
 import os
 import beem.listen
-
-logging.basicConfig(level=logging.DEBUG)
 
 def print_stats(stats):
     """
@@ -60,12 +56,12 @@ def print_stats(stats):
     print("Flight time max:    %0.2f ms" % (stats["flight_time_max"] * 1000))
 
 
-def main():
-    parser = argparse.ArgumentParser(
+def add_args(subparsers):
+    parser = subparsers.add_parser(
+        "subscribe",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""
-        Listen to a stream of messages and capture statistics on their timing
-        """)
+        description=__doc__,
+        help="Listen to a stream of messages")
 
     parser.add_argument(
         "-c", "--clientid", default="beem.listr-%d" % os.getpid(),
@@ -93,12 +89,10 @@ def main():
         help="""Topic to subscribe to, will be sorted into clients by the
          '+' symbol""")
 
-    options = parser.parse_args()
+    parser.set_defaults(handler=run)
 
+
+def run(options):
     ts = beem.listen.TrackingListener(options.host, options.port, options)
     ts.run(options.qos)
     print_stats(ts.stats())
-
-
-if __name__ == "__main__":
-    main()
