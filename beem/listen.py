@@ -110,8 +110,12 @@ class TrackingListener():
             return
         if not self.time_start:
             self.time_start = time.time()
-        ms = MsgStatus(msg)
-        self.msg_statuses.append(ms)
+
+        try:
+            ms = MsgStatus(msg)
+            self.msg_statuses.append(ms)
+        except Exception, err:
+            self.log.exception("Failed to parse a received message. (Is the publisher sending time-tracking information with -t?)")
 
     def run(self, qos=1):
         """
