@@ -1,15 +1,15 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Very basic virtual machine setup for a single machine
+# Basic vagrant setup for two bees
 # A private network of 192.168.5.x is setup,
 # It should be easy to see how to add more vms if you want to experiment
 
 Vagrant.configure("2") do |config|
-  box_url = "http://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-vagrant-i386-disk1.box"
+  box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-vagrant-i386-disk1.box"
   servers = {
     :bee1 => "192.168.5.201",
-    #:legacy01 => "192.168.5.202"
+    :bee2 => "192.168.5.202"
   }
 
   servers.each do |server_id, server_ip|
