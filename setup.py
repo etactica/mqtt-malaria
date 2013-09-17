@@ -16,7 +16,8 @@ setup(
     license="License :: OSI Approved :: BSD License",
     scripts=["malaria"],
     packages=[
-        'beem'
+        'beem',
+        'beem.cmds'
     ],
     include_package_data=True,
     zip_safe=False,
