@@ -28,7 +28,6 @@ def deploy():
     venvpath = "%(malaria_home)s/venv" % fab.env
     fabt.require.python.virtualenv(venvpath)
     with fabt.python.virtualenv(venvpath):
-        #fab.run("pip install -e %s" % path_to_tarball)
         # work around https://github.com/ronnix/fabtools/issues/157 by upgrading pip
         # and also work around require.python.pip using sudo!
         with fab.settings(sudo_user=fab.env.user):
@@ -44,10 +43,17 @@ def everybody():
     # by either vagrant bootstrap, or your cloud machine bootstrap
     # TODO - move vagrant bootstrap to a fab bootstrap target instead?
     #fab.sudo("apt-get update")
-    fabt.require.deb.packages([
-        "python-dev",
-        "python-virtualenv"
-    ])
+    family = fabt.system.distrib_family()
+    if family == "debian":
+        fabt.require.deb.packages([
+            "python-dev",
+            "python-virtualenv"
+        ])
+    if family == "redhat":
+        fabt.require.rpm.packages([
+            "python-devel",
+            "python-virtualenv"
+        ])
 
 @fab.task
 @fab.parallel
