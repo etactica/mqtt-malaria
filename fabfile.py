@@ -39,9 +39,7 @@ def deploy():
 def cleanup():
     fab.run("rm -rf /tmp/malaria-tmp-*")
 
-
-@fab.task
-def publish(target):
+def everybody():
     # this is needed at least once, but should have been covered
     # by either vagrant bootstrap, or your cloud machine bootstrap
     # TODO - move vagrant bootstrap to a fab bootstrap target instead?
@@ -50,6 +48,11 @@ def publish(target):
         "python-dev",
         "python-virtualenv"
     ])
+
+@fab.task
+@fab.parallel
+def publish(target):
+    everybody()
 
     deploy()
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
