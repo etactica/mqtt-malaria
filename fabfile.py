@@ -62,5 +62,15 @@ def publish(target):
 
     deploy()
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
-        fab.run("malaria publish -n 100 -P 10 -t -H %s" % target)
+        fab.run("malaria publish -n 10 -P 10 -t -T 1 -H %s" % target)
+    cleanup()
+
+@fab.task
+@fab.serial
+def listen(target):
+    everybody()
+
+    deploy()
+    with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
+        fab.run("malaria subscribe -n 10 -N 20 -H %s" % target)
     cleanup()
