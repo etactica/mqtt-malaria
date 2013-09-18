@@ -33,6 +33,7 @@ import argparse
 import multiprocessing
 import os
 import random
+import socket
 import time
 
 import beem
@@ -125,9 +126,10 @@ def add_args(subparsers):
         help="Publish a stream of messages")
 
     parser.add_argument(
-        "-c", "--clientid", default="beem.loadr-%d" % os.getpid(),
-        help="""Set the client id of the publisher, can be useful for acls
-        Default has pid information appended
+        "-c", "--clientid",
+        default="beem.loadr-%s-%d" % (socket.gethostname(), os.getpid()),
+        help="""Set the client id of the publisher, can be useful for acls.
+        Default includes host and pid information.
         """)
     parser.add_argument(
         "-H", "--host", default="localhost",
