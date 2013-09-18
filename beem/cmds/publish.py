@@ -165,18 +165,19 @@ def run(options):
     remaining = options.processes
 
     stats_set = []
-    while remaining > 0:
-        print("Still waiting for results from %d process(es)" % remaining)
-        try:
-            # This will print results in order started, not order completed :|
-            for result in result_set:
-                s = result.get(timeout=0.5)
-                remaining -= 1
-                print_stats(s)
-                stats_set.append(s)
-        except multiprocessing.TimeoutError:
-            pass
+    completed = 0
+    while completed < options.processes:
+        for result in result_set:
+            if result.ready():
+                completed += 1
+        print("Completed workers: %d/%d" % (completed, options.processes))
+        time.sleep(1)
+
     time_end = time.time()
+    for result in result_set:
+        s = result.get()
+        print_stats(s)
+        stats_set.append(s)
 
     agg_stats = aggregate_stats(stats_set)
     agg_stats["time_total"] = time_end - time_start
