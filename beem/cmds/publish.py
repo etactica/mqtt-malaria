@@ -103,6 +103,7 @@ def aggregate_stats(stats_set):
     count_ok = sum([x["count_ok"] for x in stats_set])
     count_total = sum([x["count_total"] for x in stats_set])
     cid = "Aggregate stats (simple avg) for %d processes" % len(stats_set)
+    avg_msgs_per_sec = naive_average([x["msgs_per_sec"] for x in stats_set])
     return {
         "clientid": cid,
         "count_ok": count_ok,
@@ -112,7 +113,7 @@ def aggregate_stats(stats_set):
         "time_max": naive_average([x["time_max"] for x in stats_set]),
         "time_mean": naive_average([x["time_mean"] for x in stats_set]),
         "time_stddev": naive_average([x["time_stddev"] for x in stats_set]),
-        "msgs_per_sec": naive_average([x["msgs_per_sec"] for x in stats_set]),
+        "msgs_per_sec": avg_msgs_per_sec * len(stats_set)
     }
 
 
