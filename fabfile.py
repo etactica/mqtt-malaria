@@ -86,19 +86,30 @@ def up():
 
 @fab.task
 @fab.parallel
-def _attack(target):
+def _attack(target, warhead):
     fab.env.malaria_home = fab.run("cat /tmp/malaria-tmp-homedir")
+    fab.env.malaria_target = target
+    cmd = []
+    
+    if warhead:
+        with open(warhead, "r") as f:
+            source = f.readlines()
+            cmds = [x for x in source if x.strip()[0] not in "#;"]
+    else:
+        cmds = ["malaria publish -n 10 -P 10 -t -T 1 -H %(malaria_target)s"]
+    
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
-        fab.run("malaria publish -n 10 -P 10 -t -T 1 -H %s" % target)
+        for cmd in cmds:
+            fab.run(cmd % fab.env)
 
 @fab.task
-def attack(target):
+def attack(target, warhead=None):
     state = _load_state()
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
     fab.env.hosts = state["hosts"]
     # Indirection necessary to fiddle with the host list like this.
-    fab.execute(_attack, target)
+    fab.execute(_attack, target, warhead)
 
 
 @fab.task

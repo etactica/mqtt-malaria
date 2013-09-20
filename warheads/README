@@ -1,0 +1,4 @@
+files in this directory can be run in a virtualenv as a "warhead" for the attack function
+The files contain lists of commands that are simply passed to fabric's "run" command.
+A variety of variables are available in the fabric environment, most usefully,
+malaria_target: the hostname targetted for attack

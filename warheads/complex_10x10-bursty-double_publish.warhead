@@ -1,0 +1,6 @@
+# Publish 10 messages from 10 clients as fast as we can from each worker
+malaria publish -t -n 10 -P 10 -H %(malaria_target)s
+# Then pause a little
+sleep 4
+# then run it again!
+malaria publish -t -n 10 -P 10 -H %(malaria_target)s

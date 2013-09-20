@@ -1,0 +1,2 @@
+# Publish 100 messages from 2 clients at 1 pps from each worker
+malaria publish -t -T 1 -n 100 -P 2 -H %(malaria_target)s
