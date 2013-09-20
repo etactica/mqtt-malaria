@@ -138,6 +138,7 @@ class TrackingSender():
                 self.log.debug(x)
             # FIXME - needs an escape clause here for giving up on messages?
         self.time_end = time.time()
+        self.mqttc.disconnect()
 
     def stats(self):
         """

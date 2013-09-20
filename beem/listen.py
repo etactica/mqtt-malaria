@@ -138,8 +138,6 @@ class TrackingListener():
                 self.log.error("Detected drops are occuring, aborting test!")
                 break
         self.time_end = time.time()
-
-        self.mqttc.loop_stop()
         self.mqttc.disconnect()
 
     def stats(self):
