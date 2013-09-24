@@ -166,17 +166,22 @@ def run(options):
     result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
     remaining = options.processes
 
-    stats_set = []
-    completed = 0
-    while completed < options.processes:
+    completed_set = []
+    while len(completed_set) < options.processes:
+        hold_set = []
         for result in result_set:
             if result.ready():
-                completed += 1
-        print("Completed workers: %d/%d" % (completed, options.processes))
-        time.sleep(1)
+                completed_set.append(result)
+            else:
+                hold_set.append(result)
+        result_set = hold_set
+        print("Completed workers: %d/%d" % (len(completed_set), options.processes))
+        if len(result_set) > 0:
+            time.sleep(1)
 
     time_end = time.time()
-    for result in result_set:
+    stats_set = []
+    for result in completed_set:
         s = result.get()
         print_stats(s)
         stats_set.append(s)
