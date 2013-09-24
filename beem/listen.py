@@ -35,39 +35,7 @@ import time
 
 import mosquitto
 
-
-class MsgStatus():
-    """
-    Allows recording statistics of a published message.
-    Used internally to generate statistics for the run.
-    """
-    def __key(self):
-        # Yes, we only care about these.  This lets us find duplicates easily
-        # TODO - perhaps time_created could go here too?
-        return (self.cid, self.mid)
-
-    def __init__(self, msg):
-        segments = msg.topic.split("/")
-        self.cid = segments[1]
-        self.mid = int(segments[3])
-        payload_segs = msg.payload.split(",")
-        self.time_created = time.mktime(time.localtime(float(payload_segs[0])))
-        self.time_received = time.time()
-
-    def time_flight(self):
-        return self.time_received - self.time_created
-
-    def __repr__(self):
-        return ("MSG(%s:%d) OK, flight time: %f ms (c:%f, r:%f)"
-                % (self.cid, self.mid, self.time_flight() * 1000,
-                   self.time_created, self.time_received))
-
-    def __eq__(x, y):
-        return x.__key() == y.__key()
-
-    def __hash__(self):
-        return hash(self.__key())
-
+from beem.trackers import ObservedMessage as MsgStatus
 
 class TrackingListener():
     """

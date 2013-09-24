@@ -35,34 +35,7 @@ import time
 
 import mosquitto
 
-
-class MsgStatus():
-    """
-    Allows recording statistics of a published message.
-    Used internally to generate statistics for the run.
-    """
-    def __init__(self, mid, real_size):
-        self.mid = mid
-        self.size = real_size
-        self.received = False
-        self.time_created = time.time()
-        self.time_received = None
-
-    def receive(self):
-        self.received = True
-        self.time_received = time.time()
-
-    def time_flight(self):
-        return self.time_received - self.time_created
-
-    def __repr__(self):
-        if self.received:
-            return ("MSG(%d) OK, flight time: %f seconds"
-                    % (self.mid, self.time_flight()))
-        else:
-            return ("MSG(%d) INCOMPLETE in flight for %f seconds so far"
-                    % (self.mid, time.time() - self.time_created))
-
+from beem.trackers import SentMessage as MsgStatus
 
 class TrackingSender():
     """
