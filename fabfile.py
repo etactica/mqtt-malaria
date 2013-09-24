@@ -27,6 +27,15 @@ def _save_state(state):
 @fab.task
 @fab.parallel
 def deploy():
+    """
+    Install malaria on a given host.
+
+    malaria will be installed to a virtual env in a temporary directory, and
+    /tmp/malaria-tmp-homedir will contain the full path for subsequent
+    operations on this host.
+    """
+    everybody()
+
     fab.local("rm -rf dist")
     # FIXME - this bit can't be parallel actually....
     # come up with some other way to check for this...
@@ -55,8 +64,14 @@ def deploy():
 @fab.task
 @fab.parallel
 def cleanup():
+    """
+    Remove all malaria code that was installed on a target
+
+    TODO - should this attempt to stop running processes if any?
+    """
     fab.run("rm -rf /tmp/malaria-tmp-*")
     fab.local("rm -f ~/.malaria")
+
 
 def everybody():
     # this is needed at least once, but should have been covered
@@ -78,8 +93,13 @@ def everybody():
 @fab.task
 @fab.parallel
 def up():
+    """
+    Prepare a set of hosts to be malaria attack nodes.
+
+    The set of machines are saved in ~/.malaria for to help with repeated
+    attacks and for cleanup.
+    """
     state = {"hosts": fab.env.hosts}
-    everybody()
     deploy()
     _save_state(state)
 
@@ -104,6 +124,13 @@ def _attack(target, warhead):
 
 @fab.task
 def attack(target, warhead=None):
+    """
+    Launch an attack against "target" with all nodes from "up"
+
+    "warhead" is a file of attack commands that will be run inside the
+    malaria virtual environment on the attacking node.  See examples in
+    the warheads directory.
+    """
     state = _load_state()
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
@@ -114,6 +141,11 @@ def attack(target, warhead=None):
 
 @fab.task
 def down():
+    """
+    Clear our memory and cleanup all malaria code on all attack nodes
+
+    TODO - this should turn off AWS-EC2 instances if we turned them on!
+    """
     state = _load_state()
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
@@ -124,8 +156,6 @@ def down():
 @fab.task
 @fab.parallel
 def publish(target, *args):
-    everybody()
-
     deploy()
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
         #fab.run("malaria publish -n 10 -P 10 -t -T 1 -H %s" % target)
@@ -135,8 +165,6 @@ def publish(target, *args):
 @fab.task
 @fab.serial
 def listen(target, *args):
-    everybody()
-
     deploy()
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
         #fab.run("malaria subscribe -n 10 -N 20 -H %s" % target)
