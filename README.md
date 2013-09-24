@@ -6,7 +6,14 @@ Contributions welcome!
 Requires mosquitto python library 1.x or greater. (1.2 will give arguably
 better performance as the "max messages in flight" parameter can be tweaked)
 
-Currently, two tools are provided, malaria publish and malaria subscribe.
+The tools are in multiple layers:
+
+* Python modules for message generation and sending/receiving
+  (Documented as pydoc)
+* command line tools for sending/receiving with stats on a single host
+  (Documented here)
+* fabric scripts for running those tools on multiple hosts
+  (Documented in README-swarm.md)
 
 malaria publish
 ===============
