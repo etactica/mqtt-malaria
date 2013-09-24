@@ -24,8 +24,18 @@ def _save_state(state):
               sort_keys=True, indent=4)
 
 
+@fab.runs_once
+def _pack():
+    fab.local("rm -rf dist")
+    # FIXME - this bit can't be parallel actually....
+    # come up with some other way to check for this...
+    fab.local("python setup.py sdist")
+    # figure out the release name and version
+    dist = fab.local('python setup.py --fullname', capture=True).strip()
+    return dist
+
+
 @fab.task
-@fab.parallel
 def deploy():
     """
     Install malaria on a given host.
@@ -36,12 +46,8 @@ def deploy():
     """
     everybody()
 
-    fab.local("rm -rf dist")
-    # FIXME - this bit can't be parallel actually....
-    # come up with some other way to check for this...
-    fab.local("python setup.py sdist")
-    # figure out the release name and version
-    dist = fab.local('python setup.py --fullname', capture=True).strip()
+    # This has to be serial, as it runs locally
+    dist = _pack()
 
     # Make a very temporary "home" remotely
     fab.env.malaria_home = fab.run("mktemp -d -t malaria-tmp-XXXXXX")
@@ -91,7 +97,6 @@ def everybody():
         ])
 
 @fab.task
-@fab.parallel
 def up():
     """
     Prepare a set of hosts to be malaria attack nodes.
