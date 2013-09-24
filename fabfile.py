@@ -157,6 +157,27 @@ def down():
     fab.env.hosts = state["hosts"]
     fab.execute(cleanup)
 
+@fab.task
+def observe():
+    """
+    Watch the outcome of the attack
+
+    Run this to setup the stats collector on the target
+    """
+    fab.env.malaria_home = fab.run("cat /tmp/malaria-tmp-homedir")
+
+    with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
+        # Default is for the two vagrant machines, default attack command
+        while True:
+            cmd = fab.prompt(
+                "Enter command to run in malaria virtual env $",
+                default="malaria subscribe -n 10 -N 20")
+            if cmd.strip():
+                fab.run(cmd % fab.env)
+            else:
+                fab.puts("Ok, done done!")
+                break
+
 
 @fab.task
 @fab.parallel
