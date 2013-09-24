@@ -61,11 +61,10 @@ def worker(options, proc_num):
     cid = "%s-%d" % (options.clientid, proc_num)
     ts = beem.load.TrackingSender(options.host, options.port, cid)
     msg_generator = None
-    if options.timing:
-        msg_generator = beem.msgs.TimeTracking(cid, options.msg_count)
-    else:
-        msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
+    msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
 
+    if options.timing:
+        msg_generator = beem.msgs.TimeTracking(msg_generator)
     if options.msgs_per_second > 0:
         msg_generator = beem.msgs.RateLimited(msg_generator, options.msgs_per_second)
     # Provide a custom generator
@@ -149,7 +148,7 @@ def add_args(subparsers):
     parser.add_argument(
         "-t", "--timing", action="store_true",
         help="""Message bodies will contain timing information instead of random
-        hex characters.  This overrides the --msg-size option, obviously""")
+        hex characters.  This can be combined with --msg-size option""")
     parser.add_argument(
         "-T", "--msgs_per_second", type=float, default=0,
         help="""Each publisher should target sending this many msgs per second,

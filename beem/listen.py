@@ -50,7 +50,8 @@ class MsgStatus():
         segments = msg.topic.split("/")
         self.cid = segments[1]
         self.mid = int(segments[3])
-        self.time_created = time.mktime(time.localtime(float(msg.payload)))
+        payload_segs = msg.payload.split(",")
+        self.time_created = time.mktime(time.localtime(float(payload_segs[0])))
         self.time_received = time.time()
 
     def time_flight(self):

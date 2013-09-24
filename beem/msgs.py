@@ -29,19 +29,6 @@ import random
 import time
 
 
-def TimeTracking(cid, sequence_size):
-    """
-    Message generator creating payloads with timestamps
-    to help determine total flight time.
-    """
-    num = 1
-    while num <= sequence_size:
-        topic = "mqtt-malaria/%s/data/%d/%d" % (cid, num, sequence_size)
-        payload = '{:f}'.format(time.time())
-        yield (num, topic, payload)
-        num = num + 1
-
-
 def GaussianSize(cid, sequence_size, target_size):
     """
     Message generator creating gaussian distributed message sizes
@@ -54,6 +41,16 @@ def GaussianSize(cid, sequence_size, target_size):
         payload = ''.join(random.choice(string.hexdigits) for x in range(real_size))
         yield (num, topic, payload)
         num = num + 1
+
+
+def TimeTracking(generator):
+    """
+    Wrap an existing generator by prepending time tracking information
+    to the start of the payload.
+    """
+    for a,b,c in generator:
+        newpayload = "{:f},{:s}".format(time.time(), c)
+        yield (a,b,newpayload)
 
 
 def RateLimited(generator, msgs_per_sec):
