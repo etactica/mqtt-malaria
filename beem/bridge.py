@@ -31,6 +31,7 @@ from __future__ import division
 
 import logging
 import multiprocessing
+import socket
 import subprocess
 import tempfile
 import time
@@ -45,7 +46,7 @@ log_dest syslog
 log_dest topic
 log_dest stdout
 bind_address 127.0.0.1
-port %(local_port)d
+port %(listen_port)d
 
 connection mal-bridge-%(cid)s
 address %(malaria_target)s
@@ -62,9 +63,18 @@ class BridgingSender():
         self.cid = cid
         self.log = logging.getLogger(__name__ + ":" + cid)
 
-        # Generate a mosquitot bridge config
+        # python 2.x doesn't have __enter__ and __exit__ on socket objects
+        # so can't use with: clauses
+        # Yes, there is a race conditon between closing the socket and
+        # starting mosquitto.
+        s = socket.socket()
+        s.bind(("localhost", 0))
+        self.chosen_port = s.getsockname()[1]
+        s.close()
+
+        # Generate a mosquitto bridge config
         conf_in = {
-            "local_port" : 2001,
+            "listen_port": self.chosen_port,
             "malaria_target": "%s:%d" % (target_host, target_port),
             "cid": cid,
             "qos": 1
@@ -72,21 +82,19 @@ class BridgingSender():
         conf = MOSQ_BRIDGE_CFG_TEMPLATE % conf_in
         # Save it to a temporary file
         self.mos_cfg = tempfile.NamedTemporaryFile()
-        self.log.info("conf file.name is %s", self.mos_cfg.name)
-        self.log.info("writing conf %s", conf)
+        self.log.debug("conf file.name is %s", self.mos_cfg.name)
         self.mos_cfg.write(conf)
-        self.mos_cfg.seek(0)  # Make it flush...
+        self.mos_cfg.flush()
         
         args = ["mosquitto", "-c", self.mos_cfg.name]
-        self.log.info("Attempting to use args: %s", args)
         self.mos = subprocess.Popen(args)
-        self.log.info("Created mosquitto...")
+        # wait for start, or the tracking sender will fail to connect...
         time.sleep(1)
         
 
     def run(self, generator, qos=1):
         # Make this ts to send to our bridge...
-        self.ts = beem.load.TrackingSender("localhost", 2001, self.cid)
+        self.ts = beem.load.TrackingSender("localhost", self.chosen_port, self.cid)
         self.ts.run(generator, qos)
         self.log.info("killing mosquitto")
         self.mos.terminate()
