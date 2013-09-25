@@ -51,7 +51,11 @@ port %(listen_port)d
 connection mal-bridge-%(cid)s
 address %(malaria_target)s
 topic mqtt-malaria/# out %(qos)d
-# TODO - add PSK stuff here...
+"""
+
+MOSQ_BRIDGE_CFG_TEMPLATE_PSK="""
+bridge_identity %(psk_id)s
+bridge_psk %(psk_key)s
 """
 
 class BridgingSender():
@@ -59,27 +63,47 @@ class BridgingSender():
     A MQTT message publisher that publishes to it's own personal bridge
     """
 
-    def __init__(self, target_host, target_port, cid):
-        self.cid = cid
-        self.log = logging.getLogger(__name__ + ":" + cid)
-
+    def get_free_listen_port(self):
+        """
+        Find a free local TCP port that we can listen on,
+        we want this to be able to give to mosquitto.
+        """
         # python 2.x doesn't have __enter__ and __exit__ on socket objects
         # so can't use with: clauses
         # Yes, there is a race conditon between closing the socket and
         # starting mosquitto.
         s = socket.socket()
         s.bind(("localhost", 0))
-        self.chosen_port = s.getsockname()[1]
+        chosen_port = s.getsockname()[1]
         s.close()
+        return chosen_port
 
-        # Generate a mosquitto bridge config
-        conf_in = {
+    def make_config(self, target_host, target_port):
+        """
+        Make an appropriate mosquitto config snippet out of
+        our params and saved state
+        """
+        template = MOSQ_BRIDGE_CFG_TEMPLATE
+        inputs = {
             "listen_port": self.chosen_port,
             "malaria_target": "%s:%d" % (target_host, target_port),
-            "cid": cid,
+            "cid": self.cid,
             "qos": 1
         }
-        conf = MOSQ_BRIDGE_CFG_TEMPLATE % conf_in
+        if self.auth:
+            template = template + MOSQ_BRIDGE_CFG_TEMPLATE_PSK
+            inputs["psk_id"] = self.auth[0]
+            inputs["psk_key"] = self.auth[1]
+
+        return template % inputs
+
+    def __init__(self, target_host, target_port, cid, auth=None):
+        self.cid = cid
+        self.auth = auth
+        self.log = logging.getLogger(__name__ + ":" + cid)
+        self.chosen_port = self.get_free_listen_port()
+
+        conf = self.make_config(target_host, target_port)
         # Save it to a temporary file
         self.mos_cfg = tempfile.NamedTemporaryFile()
         self.log.debug("conf file.name is %s", self.mos_cfg.name)
@@ -90,6 +114,8 @@ class BridgingSender():
         self.mos = subprocess.Popen(args)
         # wait for start, or the tracking sender will fail to connect...
         time.sleep(1)
+        # TODO - should we start our own listener here and wait for status on the bridge?
+        # Otherwise we don't detect failures of the bridge to come up?
         
 
     def run(self, generator, qos=1):
@@ -100,10 +126,14 @@ class BridgingSender():
         self.mos.terminate()
         self.mos.wait()
 
+    def stats(self):
+        return self.ts.stats()
+
 
 if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-    b = BridgingSender("localhost", 1883, "hohoho")
-    generator = beem.msgs.GaussianSize("blahblah", 10, 100)
+    #b = BridgingSender("localhost", 1883, "hohoho")
+    b = BridgingSender("localhost", 8883, "hohoho", ("karlos", "01230123"))
+    generator = beem.msgs.GaussianSize("karlos", 10, 100)
     b.run(generator, 1)
