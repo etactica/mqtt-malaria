@@ -75,48 +75,6 @@ def worker(options, proc_num):
     return ts.stats()
 
 
-def print_stats(stats):
-    """
-    pretty print a stats object
-    """
-    print("Clientid: %s" % stats["clientid"])
-    print("Message succes rate: %.2f%% (%d/%d messages)"
-        % (100 * stats["rate_ok"], stats["count_ok"], stats["count_total"]))
-    print("Message timing mean   %.2f ms" % stats["time_mean"])
-    print("Message timing stddev %.2f ms" % stats["time_stddev"])
-    print("Message timing min    %.2f ms" % stats["time_min"])
-    print("Message timing max    %.2f ms" % stats["time_max"])
-    print("Messages per second   %.2f" % stats["msgs_per_sec"])
-    print("Total time            %.2f secs" % stats["time_total"])
-
-def aggregate_stats(stats_set):
-    """
-    For a set of per process stats, make some basic aggregated stats
-    timings are a simple mean of the input timings. ie the aggregate
-    "minimum" is the average of the minimum of each process, not the
-    absolute minimum of any process.
-    Likewise, aggregate "stddev" is a simple mean of the stddev from each
-    process, not an entire population stddev.
-    """
-    def naive_average(the_set):
-        return sum(the_set) / len(the_set)
-    count_ok = sum([x["count_ok"] for x in stats_set])
-    count_total = sum([x["count_total"] for x in stats_set])
-    cid = "Aggregate stats (simple avg) for %d processes" % len(stats_set)
-    avg_msgs_per_sec = naive_average([x["msgs_per_sec"] for x in stats_set])
-    return {
-        "clientid": cid,
-        "count_ok": count_ok,
-        "count_total": count_total,
-        "rate_ok": count_ok / count_total,
-        "time_min": naive_average([x["time_min"] for x in stats_set]),
-        "time_max": naive_average([x["time_max"] for x in stats_set]),
-        "time_mean": naive_average([x["time_mean"] for x in stats_set]),
-        "time_stddev": naive_average([x["time_stddev"] for x in stats_set]),
-        "msgs_per_sec": avg_msgs_per_sec * len(stats_set)
-    }
-
-
 def add_args(subparsers):
     parser = subparsers.add_parser(
         "publish",
@@ -183,9 +141,9 @@ def run(options):
     stats_set = []
     for result in completed_set:
         s = result.get()
-        print_stats(s)
+        beem.print_publish_stats(s)
         stats_set.append(s)
 
-    agg_stats = aggregate_stats(stats_set)
+    agg_stats = beem.aggregate_publish_stats(stats_set)
     agg_stats["time_total"] = time_end - time_start
-    print_stats(agg_stats)
+    beem.print_publish_stats(agg_stats)
