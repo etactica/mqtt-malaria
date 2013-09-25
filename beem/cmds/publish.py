@@ -67,7 +67,8 @@ def worker(options, proc_num, auth=None):
         if auth:
             cid = auth.split(":")[0]
     else:
-        ts = beem.load.TrackingSender(options.host, options.port, cid, auth)
+	# FIXME - add auth support here too dummy!
+        ts = beem.load.TrackingSender(options.host, options.port, cid)
 
     msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
     if options.timing:
@@ -149,7 +150,7 @@ def run(options):
     pool = multiprocessing.Pool(processes=options.processes)
     time_start = time.time()
     # This should be pretty easy to use for passwords as well as PSK....
-    if auth_pairs:
+    if options.bridge_psk_file:
         result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x,auth in enumerate(auth_pairs)]
     else:
         result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
