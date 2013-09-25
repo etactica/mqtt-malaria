@@ -8,3 +8,5 @@ RELEASE-VERSION
 dist
 *.egg-info
 *.egg
+
+.tox
