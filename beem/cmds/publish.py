@@ -38,6 +38,7 @@ import time
 
 import beem
 import beem.load
+import beem.bridge
 import beem.msgs
 
 def my_custom_msg_generator(sequence_length):
@@ -52,17 +53,23 @@ def my_custom_msg_generator(sequence_length):
         yield (seq, "magic_topic", "very boring payload")
         seq+=1
 
-def worker(options, proc_num):
+def worker(options, proc_num, auth=None):
     """
     Wrapper to run a test and push the results back onto a queue.
     Modify this to provide custom message generation routines.
     """
     # Make a new clientid with our worker process number
     cid = "%s-%d" % (options.clientid, proc_num)
-    ts = beem.load.TrackingSender(options.host, options.port, cid)
-    msg_generator = None
-    msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
+    if options.bridge:
+        ts = beem.bridge.BridgingSender(options.host, options.port, cid, auth)
+        # This is _probably_ what you want if you are specifying a key file
+        # This would correspond with using ids as clientids, and acls
+        if auth:
+            cid = auth.split(":")[0]
+    else:
+        ts = beem.load.TrackingSender(options.host, options.port, cid, auth)
 
+    msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
     if options.timing:
         msg_generator = beem.msgs.TimeTracking(msg_generator)
     if options.msgs_per_second > 0:
@@ -86,7 +93,9 @@ def add_args(subparsers):
         "-c", "--clientid",
         default="beem.loadr-%s-%d" % (socket.gethostname(), os.getpid()),
         help="""Set the client id of the publisher, can be useful for acls.
-        Default includes host and pid information.
+        Default includes host and pid information, unless a keyfile was
+        specified, in which case the "user/identity" part is used as the
+        client id.  The clientid is also used in the default topics.
         """)
     parser.add_argument(
         "-H", "--host", default="localhost",
@@ -111,17 +120,39 @@ def add_args(subparsers):
         "-T", "--msgs_per_second", type=float, default=0,
         help="""Each publisher should target sending this many msgs per second,
         useful for simulating real devices.""")
+
     parser.add_argument(
+        "-b", "--bridge", action="store_true",
+        help="""Instead of connecting directly to the target, fire up a 
+        separate mosquitto instance configured to bridge to the target""")
+    proc_count_group = parser.add_mutually_exclusive_group()
+    proc_count_group.add_argument(
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")
+
+    proc_count_group.add_argument(
+        "--bridge_psk_file", type=argparse.FileType("r"),
+        help="""A file of psk 'identity:key' pairs, as you would pass to
+mosquitto's psk_file configuration option.  A bridge will be created for
+each line in the file. (Cannot be used with --processes, obviously).""")
 
     parser.set_defaults(handler=run)
 
 
 def run(options):
+    # If we're bridging, and have a key file, 
+    if options.bridge_psk_file:
+        print("Operating with a psk file: %s" % options.bridge_psk_file)
+        auth_pairs = options.bridge_psk_file.readlines()
+        options.processes = len(auth_pairs)
+
     pool = multiprocessing.Pool(processes=options.processes)
     time_start = time.time()
-    result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
+    # This should be pretty easy to use for passwords as well as PSK....
+    if auth_pairs:
+        result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x,auth in enumerate(auth_pairs)]
+    else:
+        result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
     remaining = options.processes
 
     completed_set = []

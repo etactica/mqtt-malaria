@@ -92,8 +92,9 @@ class BridgingSender():
         }
         if self.auth:
             template = template + MOSQ_BRIDGE_CFG_TEMPLATE_PSK
-            inputs["psk_id"] = self.auth[0]
-            inputs["psk_key"] = self.auth[1]
+            aa = self.auth.split(":")
+            inputs["psk_id"] = aa[0]
+            inputs["psk_key"] = aa[1]
 
         return template % inputs
 
@@ -101,6 +102,7 @@ class BridgingSender():
         self.cid = cid
         self.auth = auth
         self.log = logging.getLogger(__name__ + ":" + cid)
+        self.log.info("Created bridge sender with cid %s, auth: %s", self.cid, self.auth)
         self.chosen_port = self.get_free_listen_port()
 
         conf = self.make_config(target_host, target_port)
@@ -134,6 +136,6 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     #b = BridgingSender("localhost", 1883, "hohoho")
-    b = BridgingSender("localhost", 8883, "hohoho", ("karlos", "01230123"))
+    b = BridgingSender("localhost", 8883, "hohoho", "karlos:01230123")
     generator = beem.msgs.GaussianSize("karlos", 10, 100)
     b.run(generator, 1)
