@@ -23,33 +23,42 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+#
+# This file implements the "malaria keygen" command
 """
-Dispatcher for running any of the MQTT Malaria tools
+Creates key files, suitable for use with mosquitto servers with tls-psk
+(or, maybe even with username/password or tls-srp....)
 """
 
 import argparse
-import logging
-import sys
-
-import beem.cmds
-
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="""
-        Malaria MQTT testing tool
-        """)
-
-    subparsers = parser.add_subparsers(title="subcommands")
-
-    beem.cmds.publish.add_args(subparsers)
-    beem.cmds.subscribe.add_args(subparsers)
-    beem.cmds.keygen.add_args(subparsers)
-
-    options = parser.parse_args()
-    options.handler(options)
+import random
+import string
 
 
-if __name__ == "__main__":
-    main()
+def add_args(subparsers):
+    parser = subparsers.add_parser(
+        "keygen",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
+        help="Create a keyfile for use with mosquitto")
+
+    parser.add_argument(
+        "-t", "--template", default="malaria-tlspsk-%d",
+        help="""Set the template for usernames, the %%d will be replaced
+        with a sequential number""")
+    parser.add_argument(
+        "-n", "--count", type=int, default=10,
+        help="How many user/key pairs to generate")
+    parser.add_argument(
+        "-f", "--file", default="-", type=argparse.FileType("w"),
+        help="File to write the generated keys to")
+
+    parser.set_defaults(handler=run)
+
+
+def run(options):
+    with options.file as f:
+        for i in range(options.count):
+            user = options.template % (i + 1)
+            key = ''.join(random.choice(string.hexdigits) for _ in range(40))
+            f.write("%s:%s\n" % (user, key))
