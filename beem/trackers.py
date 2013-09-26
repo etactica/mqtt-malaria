@@ -81,8 +81,8 @@ class ObservedMessage():
                 % (self.cid, self.mid, self.time_flight() * 1000,
                    self.time_created, self.time_received))
 
-    def __eq__(x, y):
-        return x.__key() == y.__key()
+    def __eq__(self, y):
+        return self.__key() == y.__key()
 
     def __hash__(self):
         return hash(self.__key())

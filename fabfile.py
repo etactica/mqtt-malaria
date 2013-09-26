@@ -5,8 +5,6 @@
 import json
 import os
 import fabric.api as fab
-import fabric.tasks
-import fabric.contrib as fabc
 from fabtools.vagrant import vagrant  # for CLI usage
 import fabtools as fabt
 fab.env.project = "malaria"

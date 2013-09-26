@@ -83,7 +83,7 @@ class TrackingListener():
         try:
             ms = MsgStatus(msg)
             self.msg_statuses.append(ms)
-        except Exception, err:
+        except Exception:
             self.log.exception("Failed to parse a received message. (Is the publisher sending time-tracking information with -t?)")
 
     def run(self, qos=1):
@@ -98,6 +98,7 @@ class TrackingListener():
             "Listening for %d messages on topic %s (q%d)",
             self.expected, self.listen_topic, qos)
         rc = self.mqttc.subscribe(self.listen_topic, qos)
+        assert rc == 0, "Failed to subscribe?! this isn't handled!"
         while len(self.msg_statuses) < self.expected:
             # let the mosquitto thread fill us up
             time.sleep(1)

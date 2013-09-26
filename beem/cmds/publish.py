@@ -36,7 +36,6 @@ import random
 import socket
 import time
 
-import beem
 import beem.load
 import beem.bridge
 import beem.msgs
@@ -67,7 +66,7 @@ def worker(options, proc_num, auth=None):
         if auth:
             cid = auth.split(":")[0]
     else:
-	# FIXME - add auth support here too dummy!
+        # FIXME - add auth support here too dummy!
         ts = beem.load.TrackingSender(options.host, options.port, cid)
 
     msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
@@ -154,7 +153,6 @@ def run(options):
         result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x,auth in enumerate(auth_pairs)]
     else:
         result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
-    remaining = options.processes
 
     completed_set = []
     while len(completed_set) < options.processes:

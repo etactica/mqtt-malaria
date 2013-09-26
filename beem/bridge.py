@@ -30,13 +30,10 @@ to bridge out to the designated target.
 from __future__ import division
 
 import logging
-import multiprocessing
 import socket
 import subprocess
 import tempfile
 import time
-
-import mosquitto
 
 import beem.load
 import beem.msgs

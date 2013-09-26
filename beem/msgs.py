@@ -38,7 +38,7 @@ def GaussianSize(cid, sequence_size, target_size):
     while num <= sequence_size:
         topic = "mqtt-malaria/%s/data/%d/%d" % (cid, num, sequence_size)
         real_size = int(random.gauss(target_size, target_size / 20))
-        payload = ''.join(random.choice(string.hexdigits) for x in range(real_size))
+        payload = ''.join(random.choice(string.hexdigits) for _ in range(real_size))
         yield (num, topic, payload)
         num = num + 1
 

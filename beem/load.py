@@ -51,7 +51,8 @@ class TrackingSender():
     Example:
       cid = "Test-clientid-%d" % os.getpid()
       ts = TrackingSender("mqtt.example.org", 1883, cid)
-      ts.run(100)
+      generator = beem.msgs.GaussianSize(cid, 100, 1024)
+      ts.run(generator, qos=1)
       stats = ts.stats()
       print(stats["rate_ok"])
       print(stats["time_stddev"])
@@ -91,7 +92,7 @@ class TrackingSender():
         """
         publish_count = 0
         self.time_start = time.time()
-        for seq, topic, payload in msg_generator:
+        for _, topic, payload in msg_generator:
             result, mid = self.mqttc.publish(topic, payload, qos)
             assert(result == 0)
             self.msg_statuses[mid] = MsgStatus(mid, len(payload))

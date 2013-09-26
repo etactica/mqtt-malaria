@@ -29,7 +29,6 @@ Dispatcher for running any of the MQTT Malaria tools
 
 import argparse
 import logging
-import os
 import sys
 
 import beem.cmds.publish
