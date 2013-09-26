@@ -52,13 +52,50 @@ def add_args(subparsers):
     parser.add_argument(
         "-f", "--file", default="-", type=argparse.FileType("w"),
         help="File to write the generated keys to")
+    parser.add_argument(
+        "-F", "--infile", default="-", type=argparse.FileType("r"),
+        help="File to read keys from")
+    parser.add_argument(
+        "-s", "--split", action="store_true",
+        help="""Instead of generating 'count' keys into 'file', split file
+        into count pieces, named file.1,2,3,4....""")
 
     parser.set_defaults(handler=run)
 
 
-def run(options):
+def generate(options):
     with options.file as f:
         for i in range(options.count):
             user = options.template % (i + 1)
             key = ''.join(random.choice(string.hexdigits) for _ in range(40))
             f.write("%s:%s\n" % (user, key))
+
+
+def chunks(l, n):
+    """
+    Yield n successive chunks from l.
+    Source: http://stackoverflow.com/a/2130042
+    """
+    newn = int(len(l) / n)
+    for i in xrange(0, n-1):
+        yield l[i*newn:i*newn+newn]
+    yield l[n*newn-newn:]
+
+
+def split(options):
+    basename = options.infile.name
+    with options.infile as f:
+        inputs = f.readlines()
+    print("splitting %d inputs into %d pieces " % (len(inputs), options.count))
+
+    for i, lines in enumerate(chunks(inputs, options.count)):
+        with open("%s.chunked.%d" % (basename, (i + 1)), "w") as f:
+            print("writing %d entries to %s" % (len(lines), f.name))
+            [f.write(l) for l in lines]
+
+
+def run(options):
+    if options.split:
+        split(options)
+    else:
+        generate(options)
