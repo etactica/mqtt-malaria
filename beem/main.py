@@ -24,8 +24,32 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 """
-bootstrap script to provide a friendly front end
+Dispatcher for running any of the MQTT Malaria tools
 """
 
-import beem.main
-beem.main.main()
+import argparse
+import logging
+import sys
+
+import beem.cmds
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="""
+        Malaria MQTT testing tool
+        """)
+
+    subparsers = parser.add_subparsers(title="subcommands")
+
+    beem.cmds.publish.add_args(subparsers)
+    beem.cmds.subscribe.add_args(subparsers)
+    beem.cmds.keygen.add_args(subparsers)
+
+    options = parser.parse_args()
+    options.handler(options)
+
+
+if __name__ == "__main__":
+    main()
