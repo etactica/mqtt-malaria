@@ -130,8 +130,10 @@ def add_args(subparsers):
         "-b", "--bridge", action="store_true",
         help="""Instead of connecting directly to the target, fire up a
         separate mosquitto instance configured to bridge to the target""")
+    # See http://stackoverflow.com/questions/4114996/python-argparse-nargs-or-depending-on-prior-argument
+    # we shouldn't allow psk-file without bridging, as python doesn't let us use psk
     parser.add_argument(
-        "--bridge_psk_file", type=argparse.FileType("r"),
+        "--psk_file", type=argparse.FileType("r"),
         help="""A file of psk 'identity:key' pairs, as you would pass to
 mosquitto's psk_file configuration option.  Each process will use a single
 line from the file.  Only as many processes will be made as there are keys""")
@@ -142,12 +144,13 @@ line from the file.  Only as many processes will be made as there are keys""")
 def run(options):
     time_start = time.time()
     # This should be pretty easy to use for passwords as well as PSK....
-    if options.bridge_psk_file:
-        auth_pairs = options.bridge_psk_file.readlines()
+    if options.psk_file:
+        assert options.bridge, "PSK is only supported with bridging due to python limitations, sorry about that"
+        auth_pairs = options.psk_file.readlines()
         # Can only fire up as many processes as we have keys!
         proc_count = min(options.processes, len(auth_pairs))
         print("Using first %d keys from: %s"
-              % (proc_count, options.bridge_psk_file.name))
+              % (proc_count, options.psk_file.name))
         pool = multiprocessing.Pool(processes=proc_count)
         auth_pairs = auth_pairs[:proc_count]
         result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x, auth in enumerate(auth_pairs)]
