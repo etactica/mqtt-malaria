@@ -120,38 +120,37 @@ def add_args(subparsers):
         "-T", "--msgs_per_second", type=float, default=0,
         help="""Each publisher should target sending this many msgs per second,
         useful for simulating real devices.""")
+    parser.add_argument(
+        "-P", "--processes", type=int, default=1,
+        help="How many separate processes to spin up (multiprocessing)")
 
     parser.add_argument(
         "-b", "--bridge", action="store_true",
         help="""Instead of connecting directly to the target, fire up a 
         separate mosquitto instance configured to bridge to the target""")
-    proc_count_group = parser.add_mutually_exclusive_group()
-    proc_count_group.add_argument(
-        "-P", "--processes", type=int, default=1,
-        help="How many separate processes to spin up (multiprocessing)")
-
-    proc_count_group.add_argument(
+    parser.add_argument(
         "--bridge_psk_file", type=argparse.FileType("r"),
         help="""A file of psk 'identity:key' pairs, as you would pass to
-mosquitto's psk_file configuration option.  A bridge will be created for
-each line in the file. (Cannot be used with --processes, obviously).""")
+mosquitto's psk_file configuration option.  Each process will use a single
+line from the file.  Only as many processes will be made as there are keys""")
 
     parser.set_defaults(handler=run)
 
 
 def run(options):
-    # If we're bridging, and have a key file, 
-    if options.bridge_psk_file:
-        print("Operating with a psk file: %s" % options.bridge_psk_file)
-        auth_pairs = options.bridge_psk_file.readlines()
-        options.processes = len(auth_pairs)
-
-    pool = multiprocessing.Pool(processes=options.processes)
     time_start = time.time()
     # This should be pretty easy to use for passwords as well as PSK....
     if options.bridge_psk_file:
+        print("Operating with a psk file: %s" % options.bridge_psk_file)
+        auth_pairs = options.bridge_psk_file.readlines()
+        # Can only fire up as many processes as we have keys!
+        proc_count = min(options.processes, len(auth_pairs))
+        pool = multiprocessing.Pool(processes=proc_count)
+        auth_pairs = auth_pairs[:proc_count]
+        print(auth_pairs)
         result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x,auth in enumerate(auth_pairs)]
     else:
+        pool = multiprocessing.Pool(processes=options.processes)
         result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
 
     completed_set = []
