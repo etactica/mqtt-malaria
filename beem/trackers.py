@@ -86,5 +86,3 @@ class ObservedMessage():
 
     def __hash__(self):
         return hash(self.__key())
-
-

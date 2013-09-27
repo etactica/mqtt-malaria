@@ -48,9 +48,9 @@ def TimeTracking(generator):
     Wrap an existing generator by prepending time tracking information
     to the start of the payload.
     """
-    for a,b,c in generator:
+    for a, b, c in generator:
         newpayload = "{:f},{:s}".format(time.time(), c)
-        yield (a,b,newpayload)
+        yield (a, b, newpayload)
 
 
 def RateLimited(generator, msgs_per_sec):
@@ -61,4 +61,4 @@ def RateLimited(generator, msgs_per_sec):
     """
     for x in generator:
         yield x
-        time.sleep(1/msgs_per_sec)
+        time.sleep(1 / msgs_per_sec)

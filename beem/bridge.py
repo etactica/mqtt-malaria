@@ -38,7 +38,7 @@ import time
 import beem.load
 import beem.msgs
 
-MOSQ_BRIDGE_CFG_TEMPLATE= """
+MOSQ_BRIDGE_CFG_TEMPLATE = """
 log_dest syslog
 log_dest topic
 log_dest stdout
@@ -50,10 +50,11 @@ address %(malaria_target)s
 topic mqtt-malaria/# out %(qos)d
 """
 
-MOSQ_BRIDGE_CFG_TEMPLATE_PSK="""
+MOSQ_BRIDGE_CFG_TEMPLATE_PSK = """
 bridge_identity %(psk_id)s
 bridge_psk %(psk_key)s
 """
+
 
 class BridgingSender():
     """
@@ -82,7 +83,7 @@ class BridgingSender():
         """
         template = MOSQ_BRIDGE_CFG_TEMPLATE
         inputs = {
-            "listen_port": self.chosen_port,
+            "listen_port": self.lport,
             "malaria_target": "%s:%d" % (target_host, target_port),
             "cid": self.cid,
             "qos": 1
@@ -99,8 +100,9 @@ class BridgingSender():
         self.cid = cid
         self.auth = auth
         self.log = logging.getLogger(__name__ + ":" + cid)
-        self.log.info("Created bridge sender with cid %s, auth: %s", self.cid, self.auth)
-        self.chosen_port = self.get_free_listen_port()
+        self.log.info("Created bridge sender with cid %s, auth: %s"
+                      % (self.cid, self.auth))
+        self.lport = self.get_free_listen_port()
 
         conf = self.make_config(target_host, target_port)
         # Save it to a temporary file
@@ -108,18 +110,18 @@ class BridgingSender():
         self.log.debug("conf file.name is %s", self.mos_cfg.name)
         self.mos_cfg.write(conf)
         self.mos_cfg.flush()
-        
+
         args = ["mosquitto", "-c", self.mos_cfg.name]
         self.mos = subprocess.Popen(args)
         # wait for start, or the tracking sender will fail to connect...
         time.sleep(1)
-        # TODO - should we start our own listener here and wait for status on the bridge?
-        # Otherwise we don't detect failures of the bridge to come up?
-        
+        # TODO - should we start our own listener here and wait for status on
+        # the bridge? Otherwise we don't detect failures of the bridge
+        # to come up?
 
     def run(self, generator, qos=1):
         # Make this ts to send to our bridge...
-        self.ts = beem.load.TrackingSender("localhost", self.chosen_port, self.cid)
+        self.ts = beem.load.TrackingSender("localhost", self.lport, self.cid)
         self.ts.run(generator, qos)
         self.log.info("killing mosquitto")
         self.mos.terminate()

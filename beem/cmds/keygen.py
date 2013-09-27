@@ -77,9 +77,9 @@ def chunks(l, n):
     Source: http://stackoverflow.com/a/2130042
     """
     newn = int(len(l) / n)
-    for i in xrange(0, n-1):
-        yield l[i*newn:i*newn+newn]
-    yield l[n*newn-newn:]
+    for i in xrange(0, n - 1):
+        yield l[i * newn:i * newn + newn]
+    yield l[n * newn - newn:]
 
 
 def split(options):

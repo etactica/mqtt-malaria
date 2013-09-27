@@ -37,6 +37,7 @@ import mosquitto
 
 from beem.trackers import ObservedMessage as MsgStatus
 
+
 class TrackingListener():
     """
     An MQTT message subscriber that tracks an expected message sequence
@@ -133,7 +134,7 @@ class TrackingListener():
             "msg_missing": per_client_missing,
             "msg_count": msg_count,
             "ms_per_msg": (self.time_end - self.time_start) / msg_count * 1000,
-            "msg_per_sec": msg_count/(self.time_end - self.time_start),
+            "msg_per_sec": msg_count / (self.time_end - self.time_start),
             "time_total": self.time_end - self.time_start,
             "flight_time_mean": mean,
             "flight_time_stddev": stddev,

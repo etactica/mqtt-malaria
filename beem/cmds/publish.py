@@ -40,6 +40,7 @@ import beem.load
 import beem.bridge
 import beem.msgs
 
+
 def my_custom_msg_generator(sequence_length):
     """
     An example of a custom msg generator.
@@ -50,7 +51,8 @@ def my_custom_msg_generator(sequence_length):
     seq = 0
     while seq < sequence_length:
         yield (seq, "magic_topic", "very boring payload")
-        seq+=1
+        seq += 1
+
 
 def worker(options, proc_num, auth=None):
     """
@@ -69,16 +71,16 @@ def worker(options, proc_num, auth=None):
         # FIXME - add auth support here too dummy!
         ts = beem.load.TrackingSender(options.host, options.port, cid)
 
-    msg_generator = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
+    msg_gen = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
     if options.timing:
-        msg_generator = beem.msgs.TimeTracking(msg_generator)
+        msg_gen = beem.msgs.TimeTracking(msg_gen)
     if options.msgs_per_second > 0:
-        msg_generator = beem.msgs.RateLimited(msg_generator, options.msgs_per_second)
+        msg_gen = beem.msgs.RateLimited(msg_gen, options.msgs_per_second)
     # Provide a custom generator
-    #msg_generator = my_custom_msg_generator(options.msg_count)
+    #msg_gen = my_custom_msg_generator(options.msg_count)
     # This helps introduce jitter so you don't have many threads all in sync
-    time.sleep(random.uniform(0,3))
-    ts.run(msg_generator, qos=options.qos)
+    time.sleep(random.uniform(0, 3))
+    ts.run(msg_gen, qos=options.qos)
     return ts.stats()
 
 
@@ -114,8 +116,8 @@ def add_args(subparsers):
         help="Size of messages to send. This will be gaussian at (x, x/20)")
     parser.add_argument(
         "-t", "--timing", action="store_true",
-        help="""Message bodies will contain timing information instead of random
-        hex characters.  This can be combined with --msg-size option""")
+        help="""Message bodies will contain timing information instead of
+        random hex characters.  This can be combined with --msg-size option""")
     parser.add_argument(
         "-T", "--msgs_per_second", type=float, default=0,
         help="""Each publisher should target sending this many msgs per second,
@@ -126,7 +128,7 @@ def add_args(subparsers):
 
     parser.add_argument(
         "-b", "--bridge", action="store_true",
-        help="""Instead of connecting directly to the target, fire up a 
+        help="""Instead of connecting directly to the target, fire up a
         separate mosquitto instance configured to bridge to the target""")
     parser.add_argument(
         "--bridge_psk_file", type=argparse.FileType("r"),
@@ -141,14 +143,14 @@ def run(options):
     time_start = time.time()
     # This should be pretty easy to use for passwords as well as PSK....
     if options.bridge_psk_file:
-        print("Operating with a psk file: %s" % options.bridge_psk_file)
         auth_pairs = options.bridge_psk_file.readlines()
         # Can only fire up as many processes as we have keys!
         proc_count = min(options.processes, len(auth_pairs))
+        print("Using first %d keys from: %s"
+              % (proc_count, options.bridge_psk_file.name))
         pool = multiprocessing.Pool(processes=proc_count)
         auth_pairs = auth_pairs[:proc_count]
-        print(auth_pairs)
-        result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x,auth in enumerate(auth_pairs)]
+        result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x, auth in enumerate(auth_pairs)]
     else:
         pool = multiprocessing.Pool(processes=options.processes)
         result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
@@ -162,7 +164,8 @@ def run(options):
             else:
                 hold_set.append(result)
         result_set = hold_set
-        print("Completed workers: %d/%d" % (len(completed_set), options.processes))
+        print("Completed workers: %d/%d"
+              % (len(completed_set), options.processes))
         if len(result_set) > 0:
             time.sleep(1)
 

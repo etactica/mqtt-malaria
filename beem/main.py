@@ -35,6 +35,7 @@ import beem.cmds
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="""
