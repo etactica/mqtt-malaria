@@ -52,6 +52,7 @@ topic mqtt-malaria/# out %(qos)d
 MOSQ_BRIDGE_CFG_TEMPLATE_PSK = """
 bridge_identity %(psk_id)s
 bridge_psk %(psk_key)s
+bridge_tls_version tlsv1
 """
 
 
