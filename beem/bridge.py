@@ -39,9 +39,8 @@ import beem.load
 import beem.msgs
 
 MOSQ_BRIDGE_CFG_TEMPLATE = """
-log_dest syslog
 log_dest topic
-log_dest stdout
+#log_dest stdout
 bind_address 127.0.0.1
 port %(listen_port)d
 
@@ -68,7 +67,7 @@ class BridgingSender():
         """
         # python 2.x doesn't have __enter__ and __exit__ on socket objects
         # so can't use with: clauses
-        # Yes, there is a race conditon between closing the socket and
+        # Yes, there is a race condition between closing the socket and
         # starting mosquitto.
         s = socket.socket()
         s.bind(("localhost", 0))
@@ -107,7 +106,8 @@ class BridgingSender():
         conf = self.make_config(target_host, target_port)
         # Save it to a temporary file
         self.mos_cfg = tempfile.NamedTemporaryFile()
-        self.log.debug("conf file.name is %s", self.mos_cfg.name)
+        self.log.debug("Creating temporary bridge config in %s",
+                       self.mos_cfg.name)
         self.mos_cfg.write(conf)
         self.mos_cfg.flush()
 
@@ -123,7 +123,10 @@ class BridgingSender():
         # Make this ts to send to our bridge...
         self.ts = beem.load.TrackingSender("localhost", self.lport, self.cid)
         self.ts.run(generator, qos)
-        self.log.info("killing mosquitto")
+        # This leaves enough time for the sender to disconnect before we
+        # just kill mosquitto
+        time.sleep(1)
+        self.log.debug("killing mosquitto")
         self.mos.terminate()
         self.mos.wait()
 

@@ -82,13 +82,13 @@ def chunks(l, n):
     yield l[n * newn - newn:]
 
 
-def split(options):
-    basename = options.infile.name
-    with options.infile as f:
+def split(file_handle, count):
+    basename = file_handle.name
+    with file_handle as f:
         inputs = f.readlines()
-    print("splitting %d inputs into %d pieces " % (len(inputs), options.count))
+    print("splitting %d inputs into %d pieces " % (len(inputs), count))
 
-    for i, lines in enumerate(chunks(inputs, options.count)):
+    for i, lines in enumerate(chunks(inputs, count)):
         with open("%s.chunked.%d" % (basename, (i + 1)), "w") as f:
             print("writing %d entries to %s" % (len(lines), f.name))
             [f.write(l) for l in lines]
@@ -96,6 +96,6 @@ def split(options):
 
 def run(options):
     if options.split:
-        split(options)
+        split(options.infile, options.count)
     else:
         generate(options)

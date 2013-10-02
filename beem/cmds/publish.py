@@ -148,11 +148,11 @@ def run(options):
         assert options.bridge, "PSK is only supported with bridging due to python limitations, sorry about that"
         auth_pairs = options.psk_file.readlines()
         # Can only fire up as many processes as we have keys!
-        proc_count = min(options.processes, len(auth_pairs))
+        options.processes = min(options.processes, len(auth_pairs))
         print("Using first %d keys from: %s"
-              % (proc_count, options.psk_file.name))
-        pool = multiprocessing.Pool(processes=proc_count)
-        auth_pairs = auth_pairs[:proc_count]
+              % (options.processes, options.psk_file.name))
+        pool = multiprocessing.Pool(processes=options.processes)
+        auth_pairs = auth_pairs[:options.processes]
         result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x, auth in enumerate(auth_pairs)]
     else:
         pool = multiprocessing.Pool(processes=options.processes)

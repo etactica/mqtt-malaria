@@ -1,21 +1,28 @@
 #!/usr/bin/env python
-# Fabric magic for running malaria on multiple hosts
+# Fabric malaria_split_keys for running malaria on multiple hosts
 # Karl Palsson, September, 2013, <karlp@remake.is>
 
 import json
 import os
+import tempfile
+
 import fabric.api as fab
 from fabtools.vagrant import vagrant  # for CLI usage
 import fabtools as fabt
 fab.env.project = "malaria"
 
+import beem.cmds.keygen as keygen
+
+
 STATE_FILE = os.path.expanduser("~/.malaria")
+
 
 def _load_state():
     if not os.path.isfile(STATE_FILE):
         return None
 
     return json.load(open(STATE_FILE, 'r'))
+
 
 def _save_state(state):
     json.dump(state, open(STATE_FILE, 'w'),
@@ -65,6 +72,7 @@ def deploy():
         fabt.python.install("%(malaria_home)s/%(project)s.tar.gz" % fab.env)
     fabt.require.files.file("/tmp/malaria-tmp-homedir", contents=fab.env.malaria_home)
 
+
 @fab.task
 @fab.parallel
 def cleanup():
@@ -94,6 +102,7 @@ def everybody():
             "python-virtualenv"
         ])
 
+
 @fab.task
 def up():
     """
@@ -113,17 +122,18 @@ def _attack(target, warhead):
     fab.env.malaria_home = fab.run("cat /tmp/malaria-tmp-homedir")
     fab.env.malaria_target = target
     cmd = []
-    
+
     if warhead:
         with open(warhead, "r") as f:
             source = f.readlines()
             cmds = [x for x in source if x.strip()[0] not in "#;"]
     else:
         cmds = ["malaria publish -n 10 -P 10 -t -T 1 -H %(malaria_target)s"]
-    
+
     with fabt.python.virtualenv("%(malaria_home)s/venv" % fab.env):
         for cmd in cmds:
             fab.run(cmd % fab.env)
+
 
 @fab.task
 def attack(target, warhead=None):
@@ -154,6 +164,7 @@ def down():
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
     fab.env.hosts = state["hosts"]
     fab.execute(cleanup)
+
 
 @fab.task
 def observe():
@@ -186,6 +197,7 @@ def publish(target, *args):
         fab.run("malaria publish -H %s %s" % (target, ' '.join(args)))
     cleanup()
 
+
 @fab.task
 @fab.serial
 def listen(target, *args):
@@ -194,3 +206,31 @@ def listen(target, *args):
         #fab.run("malaria subscribe -n 10 -N 20 -H %s" % target)
         fab.run("malaria subscribe -H %s %s" % (target, ' '.join(args)))
     cleanup()
+
+
+@fab.task
+@fab.runs_once
+def _presplit(keyfile):
+    """magically split the file into ram and tack it into the fab.env...."""
+    with open(keyfile, "r") as f:
+        inputs = f.readlines()
+    count = len(fab.env.hosts)
+    fab.env.malaria_split_keys = dict(zip(fab.env.hosts,
+                                          keygen.chunks(inputs, count)))
+
+
+@fab.task
+def share_key(keyfile, fname="/tmp/malaria-tmp-keyfile"):
+    """
+    Take a key file and split it amongst all the given hosts,
+    installs to /tmp/malaria-tmp-keyfile.
+    TODO: should save it into the %(malaria_home) directory?
+    """
+    fab.execute(_presplit, keyfile)
+    fab.puts("Distributing keys to host: %s" % fab.env.host_string)
+    our_keys = fab.env.malaria_split_keys[fab.env.host_string]
+    with tempfile.NamedTemporaryFile() as f:
+        [f.write(l) for l in our_keys]
+        f.flush()
+        fab.put(f.name, fname)
+
