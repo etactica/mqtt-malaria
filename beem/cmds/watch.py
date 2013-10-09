@@ -23,35 +23,49 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+#
+# This file implements the "malaria watch" command
 """
-Dispatcher for running any of the MQTT Malaria tools
+Listen to a stream of messages and passively collect long term stats
 """
 
 import argparse
-import logging
-import sys
-
-import beem.cmds
-
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+import os
+import beem.listen
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="""
-        Malaria MQTT testing tool
+
+
+def add_args(subparsers):
+    parser = subparsers.add_parser(
+        "watch",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
+        help="Idly watch a stream of messages go past")
+
+    parser.add_argument(
+        "-c", "--clientid", default="beem.watchr-%d" % os.getpid(),
+        help="""Set the client id of the listner, can be useful for acls
+        Default has pid information appended.
         """)
+    parser.add_argument(
+        "-H", "--host", default="localhost",
+        help="MQTT host to connect to")
+    parser.add_argument(
+        "-p", "--port", type=int, default=1883,
+        help="Port for remote MQTT host")
+    parser.add_argument(
+        "-q", "--qos", type=int, choices=[0, 1, 2],
+        help="set the mqtt qos for subscription", default=1)
+    parser.add_argument(
+        "-t", "--topic", default="mqtt-malaria/+/data/#",
+        help="""Topic to subscribe to, will be sorted into clients by the
+         '+' symbol""")
+    parser.add_argument(
+        "-d", "--directory", help="Directory to publish statistics FS to")
 
-    subparsers = parser.add_subparsers(title="subcommands")
-
-    beem.cmds.publish.add_args(subparsers)
-    beem.cmds.subscribe.add_args(subparsers)
-    beem.cmds.keygen.add_args(subparsers)
-    beem.cmds.watch.add_args(subparsers)
-
-    options = parser.parse_args()
-    options.handler(options)
+    parser.set_defaults(handler=run)
 
 
-if __name__ == "__main__":
-    main()
+def run(options):
+    beem.listen.CensusListener(options)
