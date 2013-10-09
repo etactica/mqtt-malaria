@@ -34,8 +34,6 @@ import os
 import beem.listen
 
 
-
-
 def add_args(subparsers):
     parser = subparsers.add_parser(
         "watch",

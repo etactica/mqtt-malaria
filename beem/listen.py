@@ -180,6 +180,8 @@ statistics we have gathered about the MQTT broker we are watching and the
 topics we are subscribed to.
 """
     msgs_total = 0
+    drop_count = 0
+    drop_count_initial = None
 
     def handle_msgs_total(self):
         """Total number of messages seen since we started"""
@@ -192,6 +194,11 @@ topics we are subscribed to.
     def handle_drop_count(self):
         """Total drops since this watcher has been running"""
         return self.drop_count
+
+    def handle_topic(self):
+        """The topic this watcher is subscribing too
+        (Yes, this should be a list)"""
+        return self.listen_topic
 
     def handle_readme(self):
         """Returns 'this' readme ;)"""
@@ -217,6 +224,7 @@ topics we are subscribed to.
             "/": {"file": dir_attrs, "handler": None},
             "/msgs_total": {"file": file_attrs, "handler": handle_msgs_total},
             "/uptime": {"file": file_attrs, "handler": handle_uptime},
+            "/topic": {"file": file_attrs, "handler": handle_topic},
             "/drop_count": {"file": file_attrs, "handler": handle_drop_count},
             "/README": static_file_attrs(README_STATFS),
             "/README.detailed": {"file": file_attrs, "handler": handle_readme}
@@ -226,7 +234,6 @@ topics we are subscribed to.
         print("listener operations __init__")
         self.options = options
         self.time_start = time.time()
-
 
     def msg_handler(self, mosq, userdata, msg):
         # WARNING: this _must_ release as quickly as possible!
@@ -254,7 +261,6 @@ topics we are subscribed to.
         self.mqttc = mosquitto.Mosquitto(self.cid)
         self.mqttc.on_message = self.msg_handler
         self.listen_topic = self.options.topic
-        self.time_start = None
         # TODO - you _probably_ want to tweak this
         self.mqttc.max_inflight_messages_set(200)
         rc = self.mqttc.connect(self.options.host, self.options.port, 60)
@@ -262,9 +268,6 @@ topics we are subscribed to.
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
             # umm, how?
         self.mqttc.subscribe('$SYS/broker/publish/messages/dropped', 0)
-        self.drop_count = 0
-        self.drop_count_initial = None
-        self.dropping = False
         self.mqttc.loop_start()
         self.mqttc.subscribe(self.options.topic, self.options.qos)
 
