@@ -267,7 +267,9 @@ topics we are subscribed to.
         if rc:
             raise Exception("Couldn't even connect! ouch! rc=%d" % rc)
             # umm, how?
+        # b/p/m for >= 1.2, b/m for 1.1.x
         self.mqttc.subscribe('$SYS/broker/publish/messages/dropped', 0)
+        self.mqttc.subscribe('$SYS/broker/messages/dropped', 0)
         self.mqttc.loop_start()
         self.mqttc.subscribe(self.options.topic, self.options.qos)
 
