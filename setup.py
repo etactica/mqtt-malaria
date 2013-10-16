@@ -22,7 +22,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'mosquitto>=1.0'
+        'mosquitto>=1.0',
+        'fusepy'
     ],
     tests_require=[
         'fabric',
