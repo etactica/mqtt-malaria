@@ -100,8 +100,6 @@ class BridgingSender():
         self.cid = cid
         self.auth = auth
         self.log = logging.getLogger(__name__ + ":" + cid)
-        self.log.info("Created bridge sender with cid %s, auth: %s"
-                      % (self.cid, self.auth))
         self.lport = self.get_free_listen_port()
 
         conf = self.make_config(target_host, target_port)
@@ -111,14 +109,16 @@ class BridgingSender():
                        self.mos_cfg.name)
         self.mos_cfg.write(conf)
         self.mos_cfg.flush()
-
+        time.sleep(1)
         args = ["mosquitto", "-c", self.mos_cfg.name]
         self.mos = subprocess.Popen(args)
         # wait for start, or the tracking sender will fail to connect...
-        time.sleep(1)
+        time.sleep(3)
         # TODO - should we start our own listener here and wait for status on
         # the bridge? Otherwise we don't detect failures of the bridge
         # to come up?
+        self.log.info("Created bridge and child mosquitto, cid: %s, auth: %s"
+                      % (self.cid, self.auth))
 
     def run(self, generator, qos=1):
         # Make this ts to send to our bridge...
