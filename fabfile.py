@@ -125,8 +125,7 @@ def _attack(target, warhead):
 
     if warhead:
         with open(warhead, "r") as f:
-            source = f.readlines()
-            cmds = [x for x in source if x.strip()[0] not in "#;"]
+            cmds = [x for x in f if x.strip() and x[0] not in "#;"]
     else:
         cmds = ["malaria publish -n 10 -P 10 -t -T 1 -H %(malaria_target)s"]
 
