@@ -4,14 +4,19 @@
 
 import json
 import os
+import random
 import tempfile
+import time
 
 import fabric.api as fab
 from fabtools.vagrant import vagrant  # for CLI usage
 import fabtools as fabt
-fab.env.project = "malaria"
+import boto
+import boto.ec2
 
 import beem.cmds.keygen as keygen
+
+fab.env.project = "malaria"
 
 
 STATE_FILE = os.path.expanduser("~/.malaria")
@@ -41,15 +46,19 @@ def _pack():
 
 
 @fab.task
-def deploy():
+def deploy(install_mosquitto=False):
     """
     Install malaria on a given host.
 
     malaria will be installed to a virtual env in a temporary directory, and
     /tmp/malaria-tmp-homedir will contain the full path for subsequent
     operations on this host.
+
+    if deploy:True, then install mosquitto and mosquitto-clients as well,
+    this is necessary if you are hoping to use bridge tests, but is not done
+    automatically as you may wish to use a specific version of mosquitto 
     """
-    everybody()
+    everybody(install_mosquitto)
 
     # This has to be serial, as it runs locally
     dist = _pack()
@@ -82,10 +91,83 @@ def cleanup():
     TODO - should this attempt to stop running processes if any?
     """
     fab.run("rm -rf /tmp/malaria-tmp-*")
-    fab.local("rm -f ~/.malaria")
 
 
-def everybody():
+@fab.task
+def beeup(count, region="eu-west-1"):
+    """
+    Fire up X ec2 instances,
+    no checking against how many you already have!
+    Adds these to the .malaria state file, and saves their instance ids
+    so we can kill them later.
+    """
+    count = int(count)
+    state = _load_state()
+    if state:
+        fab.puts("already have hosts available: %s, will add %d more!" %
+                 (state["hosts"], count))
+    else:
+        state = {"hosts": [], "aws_iids": []}
+
+    ec2_connection = boto.ec2.connect_to_region(region)
+
+    key_name = "karl-malaria-bees-2013-oct-15"
+    group = "ssh-inbound"
+    instance_type = "t1.micro"
+    image_id = "ami-c27b6fb6"  # ubuntu 1204LTS-32bit
+
+    zones = ec2_connection.get_all_zones()
+    zone = random.choice(zones).name
+
+    reservation = ec2_connection.run_instances(
+        image_id=image_id,
+        min_count=count,
+        max_count=count,
+        key_name=key_name,
+        security_groups=[group],
+        instance_type=instance_type,
+        placement=zone
+        )
+    print("Reservation is ", reservation)
+    fab.puts("Waiting for Amazon to breed bees")
+    instances = []
+    for i in reservation.instances:
+        i.update()
+        while i.state != "running":
+            print(".")
+            time.sleep(2)
+            i.update()
+        instances.append(i)
+        fab.puts("Bee %s ready for action!" % i.id)
+    # Tag these so that humans can understand these better in AWS console
+    # (We just use a state file to spinup/spindown)
+    ec2_connection.create_tags([i.id for i in instances], {"malaria": "bee"})
+    #state["aws_zone"] = no-one cares
+    state["aws_iids"].extend([i.id for i in instances])
+    for i in instances:
+        hoststring = "%s@%s" % ("ubuntu", i.public_dns_name)
+        state["hosts"].append(hoststring)
+        fab.puts("Adding %s to our list of workers" % hoststring)
+    _save_state(state)
+
+
+def beedown(iids):
+    """Turn off all our bees"""
+    zone = "eu-west-1"
+    ec2_connection = boto.ec2.connect_to_region(zone)
+    tids = ec2_connection.terminate_instances(instance_ids=iids)
+    fab.puts("terminated ids: %s" % tids)
+
+
+@fab.task
+@fab.parallel
+def aptup():
+    fab.sudo("apt-get update")
+
+
+@fab.task
+@fab.parallel
+def everybody(install_mosquitto=False):
     # this is needed at least once, but should have been covered
     # by either vagrant bootstrap, or your cloud machine bootstrap
     # TODO - move vagrant bootstrap to a fab bootstrap target instead?
@@ -102,6 +184,13 @@ def everybody():
             "python-virtualenv"
         ])
 
+    if install_mosquitto:
+        # FIXME - this only works for ubuntu....
+        fab.puts("Installing mosquitto from ppa")
+        fabt.require.deb.packages(["python-software-properties"])
+        fabt.require.deb.ppa("ppa:mosquitto-dev/mosquitto-ppa")
+        fabt.require.deb.packages(["mosquitto", "mosquitto-clients"])
+
 
 @fab.task
 def up():
@@ -117,8 +206,32 @@ def up():
 
 
 @fab.task
+def mstate():
+    """
+    Set fabric hosts from ~/.malaria
+
+    Use this to help you run tasks on machines already configured.
+    $ fab beeup:3
+    $ fab mstate deploy
+    or
+    $ fab vagrant up XXXX Tidy up and make this more consistent!!!
+    $ fab mstate attack:target.machine
+
+    """
+    state = _load_state()
+    fab.env.hosts = state["hosts"]
+
+
+@fab.task
 @fab.parallel
-def _attack(target, warhead):
+def attack(target, warhead=None):
+    """
+    Launch an attack against "target" with all nodes from "up"
+
+    "warhead" is a file of attack commands that will be run inside the
+    malaria virtual environment on the attacking node.  See examples in
+    the warheads directory.
+    """
     fab.env.malaria_home = fab.run("cat /tmp/malaria-tmp-homedir")
     fab.env.malaria_target = target
     cmd = []
@@ -135,21 +248,16 @@ def _attack(target, warhead):
 
 
 @fab.task
-def attack(target, warhead=None):
+@fab.parallel
+def abort(target):
     """
-    Launch an attack against "target" with all nodes from "up"
-
-    "warhead" is a file of attack commands that will be run inside the
-    malaria virtual environment on the attacking node.  See examples in
-    the warheads directory.
+    Attempt to kill all processes that might be related to a malaria attack
+    
     """
-    state = _load_state()
-    if not state:
-        fab.abort("No state file found with active servers? %s" % STATE_FILE)
-    fab.env.hosts = state["hosts"]
-    # Indirection necessary to fiddle with the host list like this.
-    fab.execute(_attack, target, warhead)
-
+    with fab.settings(warn_only=True):
+        fab.run("kill $(pgrep malaria)", )
+        # TODO - should only be done when bridging?
+        fab.run("kill $(pgrep mosquitto)")
 
 @fab.task
 def down():
@@ -161,8 +269,13 @@ def down():
     state = _load_state()
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
-    fab.env.hosts = state["hosts"]
-    fab.execute(cleanup)
+    if state["aws_iids"]:
+        beedown(state["aws_iids"])
+    else:
+        fab.puts("Cleaning up regular hosts (that we leave running)")
+        fab.env.hosts = state["hosts"]
+        fab.execute(cleanup)
+    fab.local("rm -f ~/.malaria")
 
 
 @fab.task
@@ -219,6 +332,7 @@ def _presplit(keyfile):
 
 
 @fab.task
+@fab.parallel
 def share_key(keyfile, fname="/tmp/malaria-tmp-keyfile"):
     """
     Take a key file and split it amongst all the given hosts,
@@ -232,4 +346,3 @@ def share_key(keyfile, fname="/tmp/malaria-tmp-keyfile"):
         [f.write(l) for l in our_keys]
         f.flush()
         fab.put(f.name, fname)
-
