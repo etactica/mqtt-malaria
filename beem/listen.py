@@ -180,12 +180,17 @@ statistics we have gathered about the MQTT broker we are watching and the
 topics we are subscribed to.
 """
     msgs_total = 0
+    msgs_stored = 0
     drop_count = 0
     drop_count_initial = None
 
     def handle_msgs_total(self):
         """Total number of messages seen since we started"""
         return self.msgs_total
+
+    def handle_msgs_stored(self):
+        """Total number of stored ($sys/broker/messages/stored)"""
+        return self.msgs_stored
 
     def handle_uptime(self):
         """Time in seconds this watcher has been running"""
@@ -223,6 +228,7 @@ topics we are subscribed to.
     handlers = {
             "/": {"file": dir_attrs, "handler": None},
             "/msgs_total": {"file": file_attrs, "handler": handle_msgs_total},
+            "/msgs_stored": {"file": file_attrs, "handler": handle_msgs_stored},
             "/uptime": {"file": file_attrs, "handler": handle_uptime},
             "/topic": {"file": file_attrs, "handler": handle_topic},
             "/drop_count": {"file": file_attrs, "handler": handle_drop_count},
@@ -248,6 +254,9 @@ topics we are subscribed to.
                 self.drop_count_initial = int(msg.payload)
                 self.log.debug("Initial drops: %d", self.drop_count_initial)
             return
+        if "messages/stored" in msg.topic:
+            self.msgs_stored = int(msg.payload)
+            return
         self.msgs_total += 1
 
     def init(self, path):
@@ -270,6 +279,7 @@ topics we are subscribed to.
         # b/p/m for >= 1.2, b/m for 1.1.x
         self.mqttc.subscribe('$SYS/broker/publish/messages/dropped', 0)
         self.mqttc.subscribe('$SYS/broker/messages/dropped', 0)
+        self.mqttc.subscribe('$SYS/broker/messages/stored', 0)
         self.mqttc.loop_start()
         self.mqttc.subscribe(self.options.topic, self.options.qos)
 
