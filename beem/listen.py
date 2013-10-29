@@ -201,9 +201,8 @@ topics we are subscribed to.
         return self.drop_count
 
     def handle_topic(self):
-        """The topic this watcher is subscribing too
-        (Yes, this should be a list)"""
-        return self.listen_topic
+        """The topics this watcher is subscribing too"""
+        return '\n'.join(self.listen_topics)
 
     def handle_readme(self):
         """Returns 'this' readme ;)"""
@@ -269,7 +268,7 @@ topics we are subscribed to.
         self.log = logging.getLogger(__name__ + ":" + self.cid)
         self.mqttc = mosquitto.Mosquitto(self.cid)
         self.mqttc.on_message = self.msg_handler
-        self.listen_topic = self.options.topic
+        self.listen_topics = self.options.topic
         # TODO - you _probably_ want to tweak this
         self.mqttc.max_inflight_messages_set(200)
         rc = self.mqttc.connect(self.options.host, self.options.port, 60)
@@ -281,7 +280,7 @@ topics we are subscribed to.
         self.mqttc.subscribe('$SYS/broker/messages/dropped', 0)
         self.mqttc.subscribe('$SYS/broker/messages/stored', 0)
         self.mqttc.loop_start()
-        self.mqttc.subscribe(self.options.topic, self.options.qos)
+        [self.mqttc.subscribe(t, self.options.qos) for t in self.listen_topics]
 
     def getattr(self, path, fh=None):
         if path not in self.handlers:

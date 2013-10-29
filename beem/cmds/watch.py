@@ -56,9 +56,10 @@ def add_args(subparsers):
         "-q", "--qos", type=int, choices=[0, 1, 2],
         help="set the mqtt qos for subscription", default=1)
     parser.add_argument(
-        "-t", "--topic", default="mqtt-malaria/+/data/#",
+        "-t", "--topic", default=[], action="append",
         help="""Topic to subscribe to, will be sorted into clients by the
-         '+' symbol""")
+         '+' symbol if available. Will actually default to "#" if no custom
+         topics are provided""")
     parser.add_argument(
         "-d", "--directory", help="Directory to publish statistics FS to")
 
@@ -66,4 +67,6 @@ def add_args(subparsers):
 
 
 def run(options):
+    if not len(options.topic):
+        options.topic = ["#"]
     beem.listen.CensusListener(options)
