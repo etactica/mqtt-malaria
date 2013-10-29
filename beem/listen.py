@@ -245,10 +245,10 @@ topics we are subscribed to.
         # WARNING: this _must_ release as quickly as possible!
         # get the sequence id from the topic
         #self.log.debug("heard a message on topic: %s", msg.topic)
-        if msg.topic == '$SYS/broker/publish/messages/dropped':
+        if "/messages/dropped" in msg.topic:
             if self.drop_count_initial:
                 self.log.warn("Drop count has increased by %d",
-                              int(msg.payload) - self.drop_count_initial)
+                              (int(msg.payload) - self.drop_count_initial))
                 self.drop_count = int(msg.payload) - self.drop_count_initial
             else:
                 self.drop_count_initial = int(msg.payload)
