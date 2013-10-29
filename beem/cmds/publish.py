@@ -75,7 +75,12 @@ def worker(options, proc_num, auth=None):
     if options.timing:
         msg_gen = beem.msgs.TimeTracking(msg_gen)
     if options.msgs_per_second > 0:
-        msg_gen = beem.msgs.RateLimited(msg_gen, options.msgs_per_second)
+        if options.jitter > 0:
+            msg_gen = beem.msgs.JitteryRateLimited(msg_gen,
+                                                   options.msgs_per_second,
+                                                   options.jitter)
+        else:
+            msg_gen = beem.msgs.RateLimited(msg_gen, options.msgs_per_second)
     # Provide a custom generator
     #msg_gen = my_custom_msg_generator(options.msg_count)
     # This helps introduce jitter so you don't have many threads all in sync
@@ -122,6 +127,10 @@ def add_args(subparsers):
         "-T", "--msgs_per_second", type=float, default=0,
         help="""Each publisher should target sending this many msgs per second,
         useful for simulating real devices.""")
+    parser.add_argument(
+        "--jitter", type=float, default=0.1,
+        help="""Percentage jitter to use when rate limiting via --msgs_per_sec,
+        Can/may help avoid processes sawtoothing and becoming synchronized""")
     parser.add_argument(
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")

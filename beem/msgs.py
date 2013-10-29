@@ -62,3 +62,16 @@ def RateLimited(generator, msgs_per_sec):
     for x in generator:
         yield x
         time.sleep(1 / msgs_per_sec)
+
+
+def JitteryRateLimited(generator, msgs_per_sec, jitter=0.1):
+    """
+    Wrap an existing generator in a (jittery) rate limit.
+    This will probably behave somewhat poorly at high rates per sec, as it
+    simply uses time.sleep(1/msg_rate)
+    """
+    for x in generator:
+        yield x
+        desired = 1 / msgs_per_sec
+        extra = random.uniform(-1 * jitter * desired, 1 * jitter * desired)
+        time.sleep(desired + extra)
