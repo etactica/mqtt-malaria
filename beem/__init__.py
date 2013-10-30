@@ -31,6 +31,8 @@ def print_publish_stats(stats):
     """
     pretty print a stats object that held publisher details
     """
+    if not stats.get("clientid", None):
+        raise ValueError("Can't print stats on a non stats object?!", stats)
     print("Clientid: %s" % stats["clientid"])
     print("Message succes rate: %.2f%% (%d/%d messages)"
           % (100 * stats["rate_ok"], stats["count_ok"], stats["count_total"]))

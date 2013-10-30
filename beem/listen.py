@@ -105,7 +105,6 @@ class TrackingListener():
             self.expected, self.listen_topic, qos)
         rc = self.mqttc.subscribe(self.listen_topic, qos)
         #assert rc == 0, "Failed to subscribe?! this isn't handled!", rc
-        print ("subscribe rc was ", rc)
         while len(self.msg_statuses) < self.expected:
             # let the mosquitto thread fill us up
             time.sleep(1)

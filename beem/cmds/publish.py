@@ -54,7 +54,7 @@ def my_custom_msg_generator(sequence_length):
         seq += 1
 
 
-def worker(options, proc_num, auth=None):
+def _worker(options, proc_num, auth=None):
     """
     Wrapper to run a test and push the results back onto a queue.
     Modify this to provide custom message generation routines.
@@ -71,22 +71,19 @@ def worker(options, proc_num, auth=None):
         # FIXME - add auth support here too dummy!
         ts = beem.load.TrackingSender(options.host, options.port, cid)
 
-    msg_gen = beem.msgs.GaussianSize(cid, options.msg_count, options.msg_size)
-    if options.timing:
-        msg_gen = beem.msgs.TimeTracking(msg_gen)
-    if options.msgs_per_second > 0:
-        if options.jitter > 0:
-            msg_gen = beem.msgs.JitteryRateLimited(msg_gen,
-                                                   options.msgs_per_second,
-                                                   options.jitter)
-        else:
-            msg_gen = beem.msgs.RateLimited(msg_gen, options.msgs_per_second)
     # Provide a custom generator
     #msg_gen = my_custom_msg_generator(options.msg_count)
+    msg_gen = beem.msgs.createGenerator(cid, options)
     # This helps introduce jitter so you don't have many threads all in sync
     time.sleep(random.uniform(1, 10))
     ts.run(msg_gen, qos=options.qos)
     return ts.stats()
+
+
+def _worker_threaded(options, proc_num, auth=None):
+    ts = beem.bridge.ThreadedBridgingSender(options, proc_num, auth)
+    ts.run()
+    return ts.stats
 
 
 def add_args(subparsers):
@@ -134,6 +131,9 @@ def add_args(subparsers):
     parser.add_argument(
         "-P", "--processes", type=int, default=1,
         help="How many separate processes to spin up (multiprocessing)")
+    parser.add_argument(
+        "--thread_ratio", type=int, default=1,
+        help="Threads per process (bridged multiprocessing) WARNING! VERY ALPHA!")
 
     parser.add_argument(
         "-b", "--bridge", action="store_true",
@@ -157,15 +157,29 @@ def run(options):
         assert options.bridge, "PSK is only supported with bridging due to python limitations, sorry about that"
         auth_pairs = options.psk_file.readlines()
         # Can only fire up as many processes as we have keys!
+        # FIXME - not true with threading!!
+        assert (options.thread_ratio * options.processes) < len(auth_pairs), "can't handle more threads*procs than keys!"
         options.processes = min(options.processes, len(auth_pairs))
         print("Using first %d keys from: %s"
               % (options.processes, options.psk_file.name))
         pool = multiprocessing.Pool(processes=options.processes)
-        auth_pairs = auth_pairs[:options.processes]
-        result_set = [pool.apply_async(worker, (options, x, auth.strip())) for x, auth in enumerate(auth_pairs)]
+        if options.thread_ratio == 1:
+            auth_pairs = auth_pairs[:options.processes]
+            result_set = [pool.apply_async(_worker, (options, x, auth.strip())) for x, auth in enumerate(auth_pairs)]
+        else:
+            # need to slice auth_pairs up into thread_ratio sized chunks for each one.
+            result_set = []
+            for x in range(options.processes):
+                ll = options.thread_ratio
+                keyset = auth_pairs[x*ll:x*ll + options.thread_ratio]
+                print("process number: %d using keyset: %s" % (x, keyset))
+                result_set.append(pool.apply_async(_worker_threaded, (options, x, keyset)))
     else:
         pool = multiprocessing.Pool(processes=options.processes)
-        result_set = [pool.apply_async(worker, (options, x)) for x in range(options.processes)]
+        if options.thread_ratio == 1:
+            result_set = [pool.apply_async(_worker, (options, x)) for x in range(options.processes)]
+        else:
+            result_set = [pool.apply_async(_worker_threaded, (options, x)) for x in range(options.processes)]
 
     completed_set = []
     while len(completed_set) < options.processes:
@@ -185,9 +199,16 @@ def run(options):
     stats_set = []
     for result in completed_set:
         s = result.get()
-        beem.print_publish_stats(s)
+        if options.thread_ratio == 1:
+            beem.print_publish_stats(s)
         stats_set.append(s)
 
-    agg_stats = beem.aggregate_publish_stats(stats_set)
-    agg_stats["time_total"] = time_end - time_start
-    beem.print_publish_stats(agg_stats)
+    if options.thread_ratio == 1:
+        agg_stats = beem.aggregate_publish_stats(stats_set)
+        agg_stats["time_total"] = time_end - time_start
+        beem.print_publish_stats(agg_stats)
+    else:
+        agg_stats_set = [beem.aggregate_publish_stats(x) for x in stats_set]
+        for x in agg_stats_set:
+            x["time_total"] = time_end - time_start
+        [beem.print_publish_stats(x) for x in agg_stats_set]

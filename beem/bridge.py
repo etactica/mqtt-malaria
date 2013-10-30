@@ -30,9 +30,11 @@ to bridge out to the designated target.
 from __future__ import division
 
 import logging
+import os
 import socket
 import subprocess
 import tempfile
+import threading
 import time
 
 import beem.load
@@ -60,8 +62,121 @@ class BridgingSender():
     """
     A MQTT message publisher that publishes to it's own personal bridge
     """
+    def __init__(self, target_host, target_port, cid, auth=None):
+        self.cid = cid
+        self.auth = auth
+        self.log = logging.getLogger(__name__ + ":" + cid)
 
-    def get_free_listen_port(self):
+        self.mb = MosquittoBridgeBroker(target_host, target_port, cid, auth)
+
+    def run(self, generator, qos=1):
+        with self.mb as mb:
+            launched = False
+            while not launched:
+                try:
+                    self.ts = beem.load.TrackingSender("localhost", mb.port, "ts_" + mb.label)
+                    launched = True
+                except:
+                    # TrackingSender fails if it can't connect
+                    time.sleep(0.5)
+            self.ts.run(generator, qos)
+
+    def stats(self):
+        return self.ts.stats()
+
+
+class _ThreadedBridgeWorker(threading.Thread):
+    def __init__(self, mb, options):
+        threading.Thread.__init__(self)
+        self.mb = mb
+        self.options = options
+
+    def run(self):
+        with self.mb as mb:
+            launched = False
+            while not launched:
+                try:
+                    ts = beem.load.TrackingSender("localhost", mb.port, "ts_" + mb.label)
+                    launched = True
+                except:
+                    # TrackingSender fails if it can't connect
+                    time.sleep(0.5)
+
+            # This is probably what you want for psk setups with ACLs
+            if self.mb.auth:
+                cid = self.mb.auth.split(":")[0]
+                gen = beem.msgs.createGenerator(cid, self.options)
+            else:
+                gen = beem.msgs.createGenerator(self.mb.label, self.options)
+            ts.run(gen)
+            self.stats = ts.stats()
+
+
+class ThreadedBridgingSender():
+    """
+    A MQTT message publisher that publishes to it's own personal bridge,
+    unlike BridgingSender, this fires up X brokers, and X threads to publish.
+    This _can_ be much softer on memory usage, and as long as the per thread
+    message rate stays low enough, and the ratio not too unreasonable, there
+    should be no performance problems
+    """
+
+    def __init__(self, options, proc_num, auth=None):
+        """
+        target_host and target_port are used as is
+        cid is used as cid_%d where the thread number is inserted
+        auth should be an array of "identity:key" strings, of the same size as
+        ratio
+        """
+        self.options = options
+        self.cid_base = options.clientid
+        self.auth = auth
+        self.ratio = options.thread_ratio
+        self.mosqs = []
+        if auth:
+            assert len(auth) == self.ratio
+        self.log = logging.getLogger(__name__ + ":" + self.cid_base)
+
+        # Create all the config files immediately
+        for x in range(self.ratio):
+            label = "%s_%d_%d" % (self.cid_base, proc_num, x)
+            mb = MosquittoBridgeBroker(options.host,
+                                             options.port,
+                                             label)
+            if auth:
+                mb.auth = auth[x].strip()
+            self.mosqs.append(mb)
+
+    def run(self):
+        worker_threads = []
+        for mb in self.mosqs:
+            t = _ThreadedBridgeWorker(mb, self.options)
+            t.start()
+            worker_threads.append(t)
+
+        # Wait for all threads to complete
+        self.stats = []
+        for t in worker_threads:
+            t.join()
+            self.stats.append(t.stats)
+            self.log.debug("stats were %s", t.stats)
+
+
+class MosquittoBridgeBroker():
+    """
+    Runs an external mosquitto process configured to bridge to the target
+    host/port, optionally with tls-psk.
+
+    use this with a context manager to start/stop the broker automatically
+
+        mm = MosquittoBridgeBroker(host, port, "my connection label",
+                                   "psk_identity:psk_key")
+        with mm as b:
+            post_messages_to_broker(b.port)
+
+    """
+
+    def _get_free_listen_port(self):
         """
         Find a free local TCP port that we can listen on,
         we want this to be able to give to mosquitto.
@@ -76,16 +191,17 @@ class BridgingSender():
         s.close()
         return chosen_port
 
-    def make_config(self, target_host, target_port):
+    def _make_config(self):
         """
         Make an appropriate mosquitto config snippet out of
         our params and saved state
         """
+        self.port = self._get_free_listen_port()
         template = MOSQ_BRIDGE_CFG_TEMPLATE
         inputs = {
-            "listen_port": self.lport,
-            "malaria_target": "%s:%d" % (target_host, target_port),
-            "cid": self.cid,
+            "listen_port": self.port,
+            "malaria_target": "%s:%d" % (self.target_host, self.target_port),
+            "cid": self.label,
             "qos": 1
         }
         if self.auth:
@@ -96,49 +212,45 @@ class BridgingSender():
 
         return template % inputs
 
-    def __init__(self, target_host, target_port, cid, auth=None):
-        self.cid = cid
+    def __init__(self, target_host, target_port, label=None, auth=None):
+        self.target_host = target_host
+        self.target_port = target_port
+        self.label = label
         self.auth = auth
-        self.log = logging.getLogger(__name__ + ":" + cid)
-        self.lport = self.get_free_listen_port()
+        self.log = logging.getLogger(__name__ + "_" + label)
 
-        conf = self.make_config(target_host, target_port)
+    def __enter__(self):
+        conf = self._make_config()
         # Save it to a temporary file
-        self.mos_cfg = tempfile.NamedTemporaryFile()
-        self.log.debug("Creating temporary bridge config in %s",
-                       self.mos_cfg.name)
-        self.mos_cfg.write(conf)
-        self.mos_cfg.flush()
-        time.sleep(1)
-        args = ["mosquitto", "-c", self.mos_cfg.name]
-        self.mos = subprocess.Popen(args)
-        # wait for start, or the tracking sender will fail to connect...
-        time.sleep(3)
-        # TODO - should we start our own listener here and wait for status on
-        # the bridge? Otherwise we don't detect failures of the bridge
-        # to come up?
-        self.log.info("Created bridge and child mosquitto, cid: %s, auth: %s"
-                      % (self.cid, self.auth))
+        self._f = tempfile.NamedTemporaryFile(delete=False)
+        self._f.write(conf)
+        self._f.close()
+        self.log.debug("Creating config file %s: <%s>", self._f.name, conf)
 
-    def run(self, generator, qos=1):
-        # Make this ts to send to our bridge...
-        self.ts = beem.load.TrackingSender("localhost", self.lport, self.cid)
-        self.ts.run(generator, qos)
-        # This leaves enough time for the sender to disconnect before we
-        # just kill mosquitto
+        # too important, even though _f.close() has finished :(
         time.sleep(1)
-        self.log.debug("killing mosquitto")
-        self.mos.terminate()
-        self.mos.wait()
+        args = ["mosquitto", "-c", self._f.name]
+        self._mosq = subprocess.Popen(args)
+        return self
 
-    def stats(self):
-        return self.ts.stats()
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.log.debug("Swatting mosquitto on exit")
+        os.unlink(self._f.name)
+        # Attempt to let messages still get out of the broker...
+        time.sleep(2)
+        self._mosq.terminate()
+        self._mosq.wait()
 
 
 if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-    #b = BridgingSender("localhost", 1883, "hohoho")
-    b = BridgingSender("localhost", 8883, "hohoho", "karlos:01230123")
+    b = BridgingSender("localhost", 1883, "hohoho")
+    # b = BridgingSender("localhost", 8883, "hohoho", "karlos:01230123")
     generator = beem.msgs.GaussianSize("karlos", 10, 100)
     b.run(generator, 1)
+
+    # b = ThreadedBridgingSender("localhost", 1883, "hohoho", ratio=20)
+    # generator = beem.msgs.GaussianSize
+    # generator_args = ("karlos", 10, 100)
+    # b.run(generator, generator_args, 1)

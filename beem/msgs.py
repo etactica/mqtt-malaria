@@ -75,3 +75,24 @@ def JitteryRateLimited(generator, msgs_per_sec, jitter=0.1):
         desired = 1 / msgs_per_sec
         extra = random.uniform(-1 * jitter * desired, 1 * jitter * desired)
         time.sleep(desired + extra)
+
+
+def createGenerator(label, options, index=None):
+    """
+    Handle creating an appropriate message generator based on a set of options
+    index, if provided, will be appended to label
+    """
+    cid = label
+    if index:
+        cid += "_" + str(index)
+    msg_gen = GaussianSize(cid, options.msg_count, options.msg_size)
+    if options.timing:
+        msg_gen = TimeTracking(msg_gen)
+    if options.msgs_per_second > 0:
+        if options.jitter > 0:
+            msg_gen = JitteryRateLimited(msg_gen,
+                                         options.msgs_per_second,
+                                         options.jitter)
+        else:
+            msg_gen = RateLimited(msg_gen, options.msgs_per_second)
+    return msg_gen
