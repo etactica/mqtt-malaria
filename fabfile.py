@@ -249,7 +249,7 @@ def attack(target, warhead=None):
 
 @fab.task
 @fab.parallel
-def abort(target):
+def abort():
     """
     Attempt to kill all processes that might be related to a malaria attack
     
