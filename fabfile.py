@@ -94,12 +94,22 @@ def cleanup():
 
 
 @fab.task
-def beeup(count, region="eu-west-1"):
+def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="default", key_name="karl-malaria-bees-2013-oct-15"):
     """
     Fire up X ec2 instances,
     no checking against how many you already have!
     Adds these to the .malaria state file, and saves their instance ids
     so we can kill them later.
+
+    args:
+        count (required) number of bees to spin up
+        region (optional) defaults to "eu-west-1"
+        ami (optional) defaults to ami-c27b6fb6 (Ubu 1204lts 32bit in eu-west1)
+                ami-a53264cc is the same us-east-1
+        group (optional) defaults to "default"
+            needs to be a security group that allows ssh in!
+        key_name (optional) defaults to karl-malaria-bees-2013-oct-15
+            you need to have precreated this in your AWS console and have the private key available
     """
     count = int(count)
     state = _load_state()
@@ -110,17 +120,13 @@ def beeup(count, region="eu-west-1"):
         state = {"hosts": [], "aws_iids": []}
 
     ec2_connection = boto.ec2.connect_to_region(region)
-
-    key_name = "karl-malaria-bees-2013-oct-15"
-    group = "ssh-inbound"
     instance_type = "t1.micro"
-    image_id = "ami-c27b6fb6"  # ubuntu 1204LTS-32bit
 
     zones = ec2_connection.get_all_zones()
     zone = random.choice(zones).name
 
     reservation = ec2_connection.run_instances(
-        image_id=image_id,
+        image_id=ami,
         min_count=count,
         max_count=count,
         key_name=key_name,
