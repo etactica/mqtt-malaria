@@ -158,7 +158,7 @@ def run(options):
         auth_pairs = options.psk_file.readlines()
         # Can only fire up as many processes as we have keys!
         # FIXME - not true with threading!!
-        assert (options.thread_ratio * options.processes) < len(auth_pairs), "can't handle more threads*procs than keys!"
+        assert (options.thread_ratio * options.processes) <= len(auth_pairs), "can't handle more threads*procs than keys!"
         options.processes = min(options.processes, len(auth_pairs))
         print("Using first %d keys from: %s"
               % (options.processes, options.psk_file.name))
