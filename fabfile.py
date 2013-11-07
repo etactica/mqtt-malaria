@@ -94,7 +94,7 @@ def cleanup():
 
 
 @fab.task
-def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="default", key_name="karl-malaria-bees-2013-oct-15"):
+def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="quick-start-1", key_name="karl-malaria-bees-2013-oct-15"):
     """
     Fire up X ec2 instances,
     no checking against how many you already have!
@@ -106,7 +106,7 @@ def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="default", key_na
         region (optional) defaults to "eu-west-1"
         ami (optional) defaults to ami-c27b6fb6 (Ubu 1204lts 32bit in eu-west1)
                 ami-a53264cc is the same us-east-1
-        group (optional) defaults to "default"
+        group (optional) defaults to "quick-start-1"
             needs to be a security group that allows ssh in!
         key_name (optional) defaults to karl-malaria-bees-2013-oct-15
             you need to have precreated this in your AWS console and have the private key available
