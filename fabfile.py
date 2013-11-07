@@ -150,6 +150,7 @@ def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="quick-start-1", 
     ec2_connection.create_tags([i.id for i in instances], {"malaria": "bee"})
     #state["aws_zone"] = no-one cares
     state["aws_iids"].extend([i.id for i in instances])
+    state["region"] = region
     for i in instances:
         hoststring = "%s@%s" % ("ubuntu", i.public_dns_name)
         state["hosts"].append(hoststring)
@@ -157,10 +158,9 @@ def beeup(count, region="eu-west-1", ami="ami-c27b6fb6", group="quick-start-1", 
     _save_state(state)
 
 
-def beedown(iids):
+def beedown(iids, region="eu-west-1"):
     """Turn off all our bees"""
-    zone = "eu-west-1"
-    ec2_connection = boto.ec2.connect_to_region(zone)
+    ec2_connection = boto.ec2.connect_to_region(region)
     tids = ec2_connection.terminate_instances(instance_ids=iids)
     fab.puts("terminated ids: %s" % tids)
 
@@ -276,7 +276,7 @@ def down():
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
     if state["aws_iids"]:
-        beedown(state["aws_iids"])
+        beedown(state["aws_iids"], region=state["region"])
     else:
         fab.puts("Cleaning up regular hosts (that we leave running)")
         fab.env.hosts = state["hosts"]
