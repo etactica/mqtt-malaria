@@ -2,9 +2,8 @@ Running malaria in a swarm
 ==========================
 
 malaria includes [fabric](http://docs.fabfile.org/) scripts to help automate
-running the command line utilities on multiple hosts.  At present this is
-mostly setup with [vagrant](http://www.vagrantup.com/), but the goal is to
-use Amazon EC2 instances eventually. (more like Bees with Machine Guns)
+running the command line utilities on multiple hosts.  This has seen use with
+both [vagrant](http://www.vagrantup.com/), and also Amazone EC2 instances
 
 Notes:
 * attack nodes are only tested on ubuntu 1204 machines at this point
@@ -19,24 +18,47 @@ You should get a clone of malaria locally first.
 
     git clone https://github.com/remakeelectric/mqtt-malaria.git
 
-*TODO* Tidy this up...
-Optionally make a virtualenv, or otherwise get fab
+To use fabric, you either need to install fabric and all the ec2 tools
+yourself, or, make a python virtualenv and install malaria into it.  This
+will install all the dependencies you need
+
 ```
 virtualenv .env
 . .env/bin/activate
 pip install -e .
-???
+fab -l # list all available fab commands
+fab -d beeup # get documentation on the beeup command
 ```
 
-Use malaria to watch an attack
-==============================
-"malaria subscribe" the command line utility is used for watching the
-messages published and collecting stats.  Eventually, this should also
-collect stats on CPU, MEM and IO load on the target server...
 
-To set up an attack observer it _must_ know parameters about the attack!
-This is so it knows what and how many messages to expect and when to finish
-and calculate statistics.
+There are two main tools that can be used for watching an attack, 
+malaria subscribe and malaria watch.
+
+Use malaria to watch an attack (new hotness method)
+==================================================
+"malaria subscribe" is a useful tool, but it relies heavily on knowing what
+pattern of traffic is being sent.
+
+"malaria watch" on the other hand is much more passive, and suitable for just
+leaving running.  It collects less stats, but probably ones more interesting
+to a load tester, and with less configuration.  There's no fab support for
+this yet, you ssh to the target and run it there.  Also, note that it's not
+designed to run by itself.  It's used in conjunction with somthing like 
+[vmstatplot](https://github.com/remakeelectric/VmstatPlot) to collect
+statistics.
+
+Deploy malaria to the target as usual
+
+
+Use malaria to watch an attack (old busted method)
+==============================
+"malaria subscribe" is one command line utility for watching the
+messages published and collecting stats.  This takes a lot of cpu, but it
+collects stats on flight time, duples, missing and so on.  This also needs
+to know the exact parameters of the attack, so it knows what to expect.
+
+I've since found this to be not super useful, it's more useful for
+constrained testing on a local machine, rather than long term load testing.
 
 *note* you may wish to run this locally, connecting to the remote target
 like so *UPDATE THIS with more real world experience*
@@ -63,9 +85,79 @@ created for the observer. Use Ctrl-C to exit the command prompt
 
     fab -H attack_target cleanup
 
+Setup AWS Attack Nodes
+==========================
+"boto" is the python library for interacting with ec2.
 
-Use malaria to attack
-=====================
+Make a ~/.boto file like so
+```
+[Credentials]
+aws_access_key_id = GET_THESE_FROM_
+aws_secret_access_key = _YOUR_AWS_CONSOLE_WEBPAGE
+```
+If you don't know the secret part, you'll need to make a new credential, but
+that's something for you to work out!
+
+Setup malaria on all attack nodes
+```
+# Turn on 5 bees in eu-west-1 (see fab -d beeup for other options)
+fab beeup:5,key_name=blahblahblah
+# run apt-get update on all of them
+fab -i path_to_blahblahblah.pem mstate aptup
+# Install all dependencies in parallel
+fab -i path_to_blahblahblah.pem mstate everybody:True
+# deploy malaria code itself (serial unfortunately, help wanted!)
+fab -i path_to_blahblahblah.pem mstate deploy
+# If using bridging and tls-psk, generate/split your keyfile amongst all attack nodes
+malaria keygen -n 20000 > malaria.pskfile
+fab -i path_to_blahblahblah.pem mstate share_key:malaria.pskfile
+```
+
+
+Use malaria to attack (AWS Nodes)
+=================================
+
+Choose a warhead.  Warheads are basically command scripts that are executed on
+each of your nodes.  Normally, the warhead runs one of the general malaria
+publish commands that you can also run from your local clone of the malaria
+repository.  An example warhead is
+```
+# 100 clients at 1 mps, 500 bytes, for 1000 mesages
+malaria publish -p 8883 -b --psk_file /tmp/malaria-tmp-keyfile -P 100 -n 1000 -T 1 -s 500 -t -H %(malaria_target)s
+```
+
+This runs 100 clients on _each_ of your attack nodes.  So with 10 worker bees,
+this will make 1000 clients, each publishing at 1 message per second.
+
+With a warhead chosen, run the attack...
+```
+fab -i path_to_blahblahblah.pem mstate attack:target.machine.name,warhead=path_to_warhead_file
+```
+
+This may take a long time, of course.  If you'd like to abort a test, pressing
+ctrl-c on the fabric script will often leave things running on the far side.
+The fab script includes a target that will abort any running malaria/mosquitto
+instances on the worker bees.
+
+```
+fab -i path_to_blahblahblah.pem mstate abort
+```
+
+That's it for attacking.  To shut down your AWS bees, (terminate them)
+```
+fab -i path_to_blahblahblah.pem mstate down
+```
+
+Technical notes
+===============
+The "mstate" target works by saving all the information about created worker
+bees in the ~/.malaria file.  fab down removes this.  This is why you don't
+need to specify all the hosts each time.
+
+Use malaria to attack (Vagrant nodes)
+====================================
+BELOW IS ORIGINAL vagrant stuff, needs to be checked that it still works with "mstate" target?
+(Possibly/Probably out of date, should be reviewed below)
 *TODO* This will need lots of expansion when I get AWS properly running.
 Below are a set of commands suitable for use with either Vagrant boxes
 or with "real" hosts created externally.
