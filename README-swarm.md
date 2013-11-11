@@ -47,7 +47,24 @@ designed to run by itself.  It's used in conjunction with somthing like
 [vmstatplot](https://github.com/remakeelectric/VmstatPlot) to collect
 statistics.
 
-Deploy malaria to the target as usual
+Deploy malaria to the target as usual and then start monitoring...
+
+ $ fab -H target.machine cleanup deploy
+ $ ssh target.machine
+ $ cd /tmp
+ $ mkdir /tmp/mqttfs
+ $ . $(cat malaria-tmp-homedir)/venv/bin/activate
+ (venv)karlp@target.machine:/tmp/malaria-tmp-XXXX$ malaria watch -t "#" -d /tmp/mqttfs
+
+This creates a pseudo file system with some statics files in it, this is a
+lot like the way linux's /proc file system works.
+
+Sidebar - Using vmstatplot
+=========================
+vmstatplot is a graphing wrapper around "vmstat" that includes the contents of
+some files, like the virtual files in the mqttfs directory we made above.
+You should mostly read the README it provides, but basically, you start it,
+and then run collect every now and again to make a graph.
 
 
 Use malaria to watch an attack (old busted method)
@@ -156,9 +173,6 @@ need to specify all the hosts each time.
 
 Use malaria to attack (Vagrant nodes)
 ====================================
-BELOW IS ORIGINAL vagrant stuff, needs to be checked that it still works with "mstate" target?
-(Possibly/Probably out of date, should be reviewed below)
-*TODO* This will need lots of expansion when I get AWS properly running.
 Below are a set of commands suitable for use with either Vagrant boxes
 or with "real" hosts created externally.
 
@@ -172,17 +186,18 @@ to "fab"
 ### Install malaria software on each node and prepare to attack
 
     fab vagrant up
+    or
     fab -H attack-node1.example.org,attack-node2.example.org,... up
 
 ### Instruct all nodes from the "up" phase to attack a target with a warhead.
 You can run multiple attacks after "up"
 
-    fab -a -i /home/karlp/.vagrant.d/insecure_private_key attack:mqtt-target.example.org,warhead=warheads/complex_10x10-bursty-double_publish.warhead
+    fab -i /home/karlp/.vagrant.d/insecure_private_key mstate attack:mqtt-target.example.org,warhead=warheads/complex_10x10-bursty-double_publish.warhead
     fab attack:mqtt-target.example.org
 
 ### Stop and remove all malaria code from attack nodes
 
-    fab -a -i /home/karlp/.vagrant.d/insecure_private_key down
+    fab -i /home/karlp/.vagrant.d/insecure_private_key down
     fab down
 
 ### Optionally, Destroy and turn off the vagrant virtual machines created

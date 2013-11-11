@@ -269,13 +269,11 @@ def abort():
 def down():
     """
     Clear our memory and cleanup all malaria code on all attack nodes
-
-    TODO - this should turn off AWS-EC2 instances if we turned them on!
     """
     state = _load_state()
     if not state:
         fab.abort("No state file found with active servers? %s" % STATE_FILE)
-    if state["aws_iids"]:
+    if "aws_iids" in state:
         beedown(state["aws_iids"], region=state["region"])
     else:
         fab.puts("Cleaning up regular hosts (that we leave running)")
