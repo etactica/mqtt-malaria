@@ -1,0 +1,2 @@
+# 150 clients at 1/6 Hz, 5 bytes, for 1000 mesages NO SSL
+malaria publish -q 0 -b -P 150 -n 1000 -T 0.166 -s 5 -t -H %(malaria_target)s

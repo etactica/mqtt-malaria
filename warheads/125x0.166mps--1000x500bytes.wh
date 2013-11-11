@@ -1,0 +1,1 @@
+malaria publish -p 8883 -b --psk_file /tmp/malaria-tmp-keyfile -P 125 -n 1000 -T 0.166 -s 500 -t -H %(malaria_target)s

@@ -1,0 +1,2 @@
+# 150 clients at 1/15 Hz, 500 bytes, for 1000 mesages
+malaria publish -p 8883 -b --psk_file /tmp/malaria-tmp-keyfile -P 150 -n 1000 -T 0.066 -s 500 -t -H %(malaria_target)s

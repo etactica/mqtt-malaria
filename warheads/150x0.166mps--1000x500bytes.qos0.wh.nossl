@@ -1,0 +1,2 @@
+# 100 clients at 1/6 Hz, 500 bytes, for 1000 mesages
+malaria publish -q 0 -b -P 150 -n 1000 -T 0.166 -s 500 -t -H %(malaria_target)s
