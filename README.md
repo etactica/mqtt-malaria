@@ -220,3 +220,7 @@ set this up such that the publisher components can be run as "bees"
 Also
 * http://affolter-engineering.ch/mqtt-randompub/ Appeared as I was finishing this.
 * https://github.com/chirino/mqtt-benchmark
+* http://www.ekito.fr/people/mqtt-benchmarks-rabbitmq-activemq/
+* https://github.com/bluewindthings/mqtt-stress
+* https://github.com/tuanhiep/mqtt-jmeter
+
