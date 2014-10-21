@@ -49,12 +49,14 @@ statistics.
 
 Deploy malaria to the target as usual and then start monitoring...
 
- $ fab -H target.machine cleanup deploy
- $ ssh target.machine
- $ cd /tmp
- $ mkdir /tmp/mqttfs
- $ . $(cat malaria-tmp-homedir)/venv/bin/activate
- (venv)karlp@target.machine:/tmp/malaria-tmp-XXXX$ malaria watch -t "#" -d /tmp/mqttfs
+```
+fab -H target.machine cleanup deploy
+ssh target.machine
+cd /tmp
+mkdir /tmp/mqttfs
+. $(cat malaria-tmp-homedir)/venv/bin/activate
+(venv)karlp@target.machine:/tmp/malaria-tmp-XXXX$ malaria watch -t "#" -d /tmp/mqttfs
+```
 
 This creates a pseudo file system with some statics files in it, this is a
 lot like the way linux's /proc file system works.
