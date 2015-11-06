@@ -3,6 +3,7 @@
 
 .vagrant
 .env
+.venv
 
 RELEASE-VERSION
 dist
