@@ -22,7 +22,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'mosquitto>=1.0',
+        'paho-mqtt',
         'fusepy'
     ],
     tests_require=[
