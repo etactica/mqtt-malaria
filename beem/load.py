@@ -33,7 +33,7 @@ import logging
 import math
 import time
 
-import mosquitto
+import paho.mqtt.client as mqtt
 
 from beem.trackers import SentMessage as MsgStatus
 
@@ -63,7 +63,7 @@ class TrackingSender():
     def __init__(self, host, port, cid):
         self.cid = cid
         self.log = logging.getLogger(__name__ + ":" + cid)
-        self.mqttc = mosquitto.Mosquitto(cid)
+        self.mqttc = mqtt.Client(cid)
         self.mqttc.on_publish = self.publish_handler
         # TODO - you _probably_ want to tweak this
         if hasattr(self.mqttc, "max_inflight_messages_set"):

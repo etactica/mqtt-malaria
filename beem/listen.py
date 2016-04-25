@@ -38,7 +38,7 @@ import tempfile
 import time
 
 import fuse
-import mosquitto
+import paho.mqtt.client as mqtt
 
 from beem.trackers import ObservedMessage as MsgStatus
 
@@ -55,7 +55,7 @@ class TrackingListener():
         self.options = opts
         self.cid = opts.clientid
         self.log = logging.getLogger(__name__ + ":" + self.cid)
-        self.mqttc = mosquitto.Mosquitto(self.cid)
+        self.mqttc = mqtt.Client(self.cid)
         self.mqttc.on_message = self.msg_handler
         self.listen_topic = opts.topic
         self.time_start = None
@@ -265,7 +265,7 @@ topics we are subscribed to.
         print("listener post init init(), path=", path)
         self.cid = self.options.clientid
         self.log = logging.getLogger(__name__ + ":" + self.cid)
-        self.mqttc = mosquitto.Mosquitto(self.cid)
+        self.mqttc = mqtt.Client(self.cid)
         self.mqttc.on_message = self.msg_handler
         self.listen_topics = self.options.topic
         # TODO - you _probably_ want to tweak this

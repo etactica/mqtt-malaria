@@ -3,8 +3,7 @@ of MQTT environments.
 
 Contributions welcome!
 
-Requires mosquitto python library 1.x or greater. (1.2 will give arguably
-better performance as the "max messages in flight" parameter can be tweaked)
+Requires paho-mqtt python library 1.1 or greater.
 
 The tools are in multiple layers:
 
