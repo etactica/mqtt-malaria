@@ -3,7 +3,16 @@ of MQTT environments.
 
 Contributions welcome!
 
-Requires paho-mqtt python library 1.1 or greater.
+Install
+=======
+
+Requires python2, paho-mqtt python library 1.1 or greater, and fusepy.
+
+```
+virtualenv .env
+. .env/bin/activate
+pip install .
+```
 
 The tools are in multiple layers:
 
