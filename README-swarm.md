@@ -16,7 +16,7 @@ Get malaria
 ===========
 You should get a clone of malaria locally first.
 
-    git clone https://github.com/remakeelectric/mqtt-malaria.git
+    git clone https://github.com/etactica/mqtt-malaria.git
 
 To use fabric, you either need to install fabric and all the ec2 tools
 yourself, or, make a python virtualenv and install malaria into it.  This
@@ -44,7 +44,7 @@ leaving running.  It collects less stats, but probably ones more interesting
 to a load tester, and with less configuration.  There's no fab support for
 this yet, you ssh to the target and run it there.  Also, note that it's not
 designed to run by itself.  It's used in conjunction with somthing like 
-[vmstatplot](https://github.com/remakeelectric/VmstatPlot) to collect
+[vmstatplot](https://github.com/etactica/VmstatPlot) to collect
 statistics.
 
 Deploy malaria to the target as usual and then start monitoring...

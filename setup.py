@@ -7,9 +7,9 @@ def read(fname):
 
 setup(
     name='mqtt-malaria',
-    url="https://github.com/remakeelectric/mqtt-malaria",
-    maintainer="ReMake Electric ehf. - Software Department",
-    maintainer_email="software@remake.is",
+    url="https://github.com/etactica/mqtt-malaria",
+    maintainer="eTactica ehf. - Software Department",
+    maintainer_email="technical@etactica.com",
     version=version.get_git_version(),
     description="Attacking MQTT systems with Mosquittos",
     long_description=read('README.md'),
