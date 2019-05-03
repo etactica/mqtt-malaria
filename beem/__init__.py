@@ -50,11 +50,11 @@ def json_dump_stats(stats, path):
     write the stats object to disk.
     """
     try:
-       with open(path, 'w') as f:  
+       with open(path, 'w') as f:
            json.dump(stats, f)
        print("Wrote stats to: {}".format(path))
     except IOError:
-        print "Couldn't dump JSON stats to: {}".format(path)
+        print("Couldn't dump JSON stats to: {}".format(path))
         
 
 def aggregate_publish_stats(stats_set):

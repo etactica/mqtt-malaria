@@ -218,5 +218,4 @@ def run(options):
             x["time_total"] = time_end - time_start
         [beem.print_publish_stats(x) for x in agg_stats_set]
         if options.json is not None:
-            [beem.json_dump_stats(x, options.json) for x in agg_stats_set]
-
+            beem.json_dump_stats(agg_stats_set, options.json)
