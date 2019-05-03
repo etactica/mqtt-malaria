@@ -25,6 +25,7 @@
 Basic helper routines that might be needed in multiple places.
 Also, just a place holder for the package.
 """
+import json
 
 
 def print_publish_stats(stats):
@@ -43,6 +44,18 @@ def print_publish_stats(stats):
     print("Messages per second   %.2f" % stats["msgs_per_sec"])
     print("Total time            %.2f secs" % stats["time_total"])
 
+
+def json_dump_stats(stats, path):
+    """
+    write the stats object to disk.
+    """
+    try:
+       with open(path, 'w') as f:
+           json.dump(stats, f)
+       print("Wrote stats to: {}".format(path))
+    except IOError:
+        print("Couldn't dump JSON stats to: {}".format(path))
+        
 
 def aggregate_publish_stats(stats_set):
     """

@@ -146,6 +146,9 @@ def add_args(subparsers):
         help="""A file of psk 'identity:key' pairs, as you would pass to
 mosquitto's psk_file configuration option.  Each process will use a single
 line from the file.  Only as many processes will be made as there are keys""")
+    parser.add_argument(
+        "--json", type=str, default=None,
+        help="""Dump the collected stats into the given JSON file.""")
 
     parser.set_defaults(handler=run)
 
@@ -207,8 +210,12 @@ def run(options):
         agg_stats = beem.aggregate_publish_stats(stats_set)
         agg_stats["time_total"] = time_end - time_start
         beem.print_publish_stats(agg_stats)
+        if options.json is not None:
+            beem.json_dump_stats(agg_stats, options.json)
     else:
         agg_stats_set = [beem.aggregate_publish_stats(x) for x in stats_set]
         for x in agg_stats_set:
             x["time_total"] = time_end - time_start
         [beem.print_publish_stats(x) for x in agg_stats_set]
+        if options.json is not None:
+            beem.json_dump_stats(agg_stats_set, options.json)
