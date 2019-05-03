@@ -89,6 +89,9 @@ def add_args(subparsers):
         "-t", "--topic", default="mqtt-malaria/+/data/#",
         help="""Topic to subscribe to, will be sorted into clients by the
          '+' symbol""")
+    parser.add_argument(
+        "--json", type=str, default=None,
+        help="""Dump the collected stats into the given JSON file.""")
 
     parser.set_defaults(handler=run)
 
@@ -97,3 +100,5 @@ def run(options):
     ts = beem.listen.TrackingListener(options.host, options.port, options)
     ts.run(options.qos)
     print_stats(ts.stats())
+    if options.json is not None:
+        beem.json_dump_stats(ts.stats(), options.json)
