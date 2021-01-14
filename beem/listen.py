@@ -51,11 +51,19 @@ class TrackingListener():
 
     msg_statuses = []
 
-    def __init__(self, host, port, opts):
+    def __init__(self, host, port, username, password, opts):
         self.options = opts
         self.cid = opts.clientid
         self.log = logging.getLogger(__name__ + ":" + self.cid)
         self.mqttc = mqtt.Client(self.cid)
+
+        #confirm either both username and password are set, or neither are
+        #https://stackoverflow.com/questions/14350343/python-argparse-either-both-optional-arguments-or-else-neither-one
+        if username and password:
+            self.mqttc.username_pw_set(username=username, password=password)
+        elif bool(username) ^ bool(password):
+            raise Exception('--username and --password must be given together')
+
         self.mqttc.on_message = self.msg_handler
         self.listen_topic = opts.topic
         self.time_start = None

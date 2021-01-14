@@ -68,7 +68,6 @@ def _worker(options, proc_num, auth=None):
         if auth:
             cid = auth.split(":")[0]
     else:
-        # FIXME - add auth support here too dummy!
         ts = beem.load.TrackingSender(options.host, options.port, options.username, options.password, cid)
 
     # Provide a custom generator

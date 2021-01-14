@@ -70,7 +70,7 @@ class TrackingSender():
         if username and password:
             self.mqttc.username_pw_set(username=username, password=password)
         elif bool(username) ^ bool(password):
-            Exception('--username and --password must be given together')
+            raise Exception('--username and --password must be given together')
 
         self.mqttc.on_publish = self.publish_handler
         # TODO - you _probably_ want to tweak this
