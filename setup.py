@@ -10,7 +10,7 @@ setup(
     url="https://github.com/etactica/mqtt-malaria",
     maintainer="eTactica ehf. - Software Department",
     maintainer_email="technical@etactica.com",
-    version=version.get_git_version(),
+    version=str(version.get_git_version()),
     description="Attacking MQTT systems with Mosquittos",
     long_description=read('README.md'),
     license="License :: OSI Approved :: BSD License",
