@@ -69,7 +69,7 @@ def _worker(options, proc_num, auth=None):
             cid = auth.split(":")[0]
     else:
         # FIXME - add auth support here too dummy!
-        ts = beem.load.TrackingSender(options.host, options.port, cid)
+        ts = beem.load.TrackingSender(options.host, options.port, options.username, options.password, cid)
 
     # Provide a custom generator
     #msg_gen = my_custom_msg_generator(options.msg_count)
@@ -107,6 +107,12 @@ def add_args(subparsers):
     parser.add_argument(
         "-p", "--port", type=int, default=1883,
         help="Port for remote MQTT host")
+    parser.add_argument(
+        "-u", "--username", default=None,
+        help="Username for MQTT broker authentication")
+    parser.add_argument(
+        "-pw", "--password", default=None,
+        help="MQTT host to connect to")
     parser.add_argument(
         "-q", "--qos", type=int, choices=[0, 1, 2],
         help="set the mqtt qos for messages published", default=1)
@@ -151,7 +157,6 @@ line from the file.  Only as many processes will be made as there are keys""")
         help="""Dump the collected stats into the given JSON file.""")
 
     parser.set_defaults(handler=run)
-
 
 def run(options):
     time_start = time.time()

@@ -60,10 +60,18 @@ class TrackingSender():
     """
     msg_statuses = {}
 
-    def __init__(self, host, port, cid):
+    def __init__(self, host, port, username, password, cid):
         self.cid = cid
         self.log = logging.getLogger(__name__ + ":" + cid)
         self.mqttc = mqtt.Client(cid)
+
+        #confirm either both username and password are set, or neither are
+        #https://stackoverflow.com/questions/14350343/python-argparse-either-both-optional-arguments-or-else-neither-one
+        if username and password:
+            self.mqttc.username_pw_set(username=username, password=password)
+        elif bool(username) ^ bool(password):
+            Exception('--username and --password must be given together')
+
         self.mqttc.on_publish = self.publish_handler
         # TODO - you _probably_ want to tweak this
         if hasattr(self.mqttc, "max_inflight_messages_set"):
