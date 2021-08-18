@@ -1,7 +1,15 @@
 A set of tools to help with testing the scalability and load behaviour
 of MQTT environments.
 
-Contributions welcome!
+Status
+======
+
+This project has not been used internally since around 2015 and is not in
+active development.  We will attempt to review and merge bugfixes, but
+any large feature work we simply don't have time to help with.
+
+At the time of writing, we are not aware of any forks that you should
+track instead, nor have we kept up with the state of the art in this field.
 
 Install
 =======
