@@ -14,6 +14,8 @@ track instead, nor have we kept up with the state of the art in this field.
 Install
 =======
 
+If using Docker, just do ```docker build .```
+
 Requires python2, paho-mqtt python library 1.1 or greater, and fusepy.
 
 ```
@@ -78,6 +80,9 @@ optional arguments:
                         (multiprocessing) (default: 1)
 ```
 
+If using Docker version, 
+docker run flaviostutz/mqtt-malaria [options]
+
 Examples
 --------
 
@@ -85,6 +90,11 @@ To fire up 8 processes each sending 10000 messages of ~100 bytes each,
 sending as fast as the code allows.
 ```
   malaria publish -P 8 -n 10000 -H mqtt.example.org -s 100
+```
+
+For doing the same as above, now using the containerized version:
+```
+  docker run flaviostutz/mqtt-malaria publish -P 8 -n 10000 -H mqtt.example.org -s 100
 ```
 
 To fire up 500 processes, each sending 5 messages per second, each sending
