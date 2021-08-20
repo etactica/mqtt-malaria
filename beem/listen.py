@@ -51,11 +51,19 @@ class TrackingListener():
 
     msg_statuses = []
 
-    def __init__(self, host, port, opts):
+    def __init__(self, host, port, username, password, opts):
         self.options = opts
         self.cid = opts.clientid
         self.log = logging.getLogger(__name__ + ":" + self.cid)
         self.mqttc = mqtt.Client(self.cid)
+
+        #confirm either both username and password are set, or neither are
+        #https://stackoverflow.com/questions/14350343/python-argparse-either-both-optional-arguments-or-else-neither-one
+        if username and password:
+            self.mqttc.username_pw_set(username=username, password=password)
+        elif bool(username) ^ bool(password):
+            raise Exception('--username and --password must be given together')
+
         self.mqttc.on_message = self.msg_handler
         self.listen_topic = opts.topic
         self.time_start = None
@@ -155,7 +163,7 @@ def static_file_attrs(content=None):
     else:
         size = 20
     return {
-            "file": dict(st_mode=(stat.S_IFREG | 0444), st_nlink=1,
+            "file": dict(st_mode=(stat.S_IFREG | 0o0444), st_nlink=1,
                             st_size=size,
                             st_ctime=now, st_mtime=now,
                             st_atime=now),
@@ -165,12 +173,12 @@ def static_file_attrs(content=None):
 
 class MalariaWatcherStatsFS(fuse.LoggingMixIn, fuse.Operations):
 
-    file_attrs = dict(st_mode=(stat.S_IFREG | 0444), st_nlink=1,
+    file_attrs = dict(st_mode=(stat.S_IFREG | 0o0444), st_nlink=1,
                             st_size=20000,
                             st_ctime=time.time(), st_mtime=time.time(),
                             st_atime=time.time())
 
-    dir_attrs = dict(st_mode=(stat.S_IFDIR | 0755),  st_nlink=2,
+    dir_attrs = dict(st_mode=(stat.S_IFDIR | 0o0755),  st_nlink=2,
                             st_ctime=time.time(), st_mtime=time.time(),
                             st_atime=time.time())
     README_STATFS = """

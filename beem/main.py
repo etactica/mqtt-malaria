@@ -42,7 +42,8 @@ def main():
         Malaria MQTT testing tool
         """)
 
-    subparsers = parser.add_subparsers(title="subcommands")
+    subparsers = parser.add_subparsers(dest="subcommands")
+    subparsers.required = True
 
     beem.cmds.publish.add_args(subparsers)
     beem.cmds.subscribe.add_args(subparsers)

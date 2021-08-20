@@ -97,7 +97,7 @@ def add_args(subparsers):
 
 
 def run(options):
-    ts = beem.listen.TrackingListener(options.host, options.port, options)
+    ts = beem.listen.TrackingListener(options.host, options.port, options.username, options.password, options)
     ts.run(options.qos)
     print_stats(ts.stats())
     if options.json is not None:
